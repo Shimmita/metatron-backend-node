@@ -9,6 +9,7 @@ import {
   handleGetAllPostsUserSpecific,
   handleGetAllTechiePost,
   handleGetSpecificPostDetails,
+  handleGetTopPosts,
   handleGithubIncremental,
   handlePostCommentsCreate,
   handlePostLiking,
@@ -31,6 +32,9 @@ postManageRouter.post(
 
 // getAllPost
 postManageRouter.get("/all", handleGetAllTechiePost);
+
+// get top posts
+postManageRouter.get("/top", handleGetTopPosts);
 
 // get specific post
 postManageRouter.get("/all/:id", handleGetSpecificPostDetails);

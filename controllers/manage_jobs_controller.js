@@ -77,7 +77,7 @@ export const handleGetTopJobs = async (req, res) => {
     // sort them the latest first
     const latestJobs = await JobPostModel.find({}, { my_phone: 0, my_email: 0 })
       .sort({ createdAt: -1 })
-      .limit(3);
+      .limit(4);
     // no jobs posted
     if (latestJobs.length < 1) {
       throw new Error(

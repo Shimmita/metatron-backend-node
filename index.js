@@ -13,10 +13,11 @@ import manageChatAiRoute from "./routes/manage_chat_route.js";
 import manageConnectRequestRoute from "./routes/manage_connect_route.js";
 import manageConversationsRoute from "./routes/manage_converse_route.js";
 import { coursesManageRouter } from "./routes/manage_courses_route.js";
+import manageGlobalSearchRoute from "./routes/manage_global_search_route.js";
 import { manageJobsRouter } from "./routes/manage_jobs_route.js";
+import manageNetworkRoute from "./routes/manage_network_route.js";
 import { postManageRouter } from "./routes/manage_post_route.js";
 import manageUsersRoute from "./routes/manage_users_route.js";
-import manageGlobalSearchRoute from "./routes/manage_global_search_route.js";
 const mongoDBSession = connectMongoStore(session);
 const app = express();
 app.use(bodyParser.json());
@@ -93,6 +94,9 @@ app.use(`${BASE_ROUTE}/courses`, handleAuthMiddleware, coursesManageRouter);
 
 //users route
 app.use(`${BASE_ROUTE}/users`, handleAuthMiddleware, manageUsersRoute);
+
+// friends or networks routed
+app.use(`${BASE_ROUTE}/network`, handleAuthMiddleware, manageNetworkRoute);
 
 // global search route
 app.use(`${BASE_ROUTE}/global`, handleAuthMiddleware, manageGlobalSearchRoute);

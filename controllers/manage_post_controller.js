@@ -104,6 +104,20 @@ export const handleGetAllTechiePost = async (req, res) => {
   }
 };
 
+// get top 3 posts
+export const handleGetTopPosts = async (req, res) => {
+  try {
+    const posts = await TechPostModal.find().limit(3);
+    console.log(posts)
+    res.status(200).send(posts);
+  } catch (error) {
+    //log the error
+    console.log(error.message);
+    //send the error to the fronted
+    res.status(400).send(error.message);
+  }
+};
+
 // get all tech posts of a user based on their ID
 export const handleGetAllPostsUserSpecific = async (req, res) => {
   try {
