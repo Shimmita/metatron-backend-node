@@ -33,8 +33,7 @@ app.use(
 const PORT = process.env.PORT || 5000;
 // base route
 const BASE_ROUTE = process.env.BASE_ROUTE;
-// defines if server is under maintainance
-const isUnderMaintaince = process.env.MAINTAINANCE === "1";
+
 
 // init mongoDB
 mongoose
@@ -129,10 +128,7 @@ app.use(`${BASE_ROUTE}/valid`, (req, res) => {
       throw new Error("Hey there, welcome");
     }
 
-    // server is under maintainance
-    if (isUnderMaintaince) {
-      throw new Error("server under maintainance try again later");
-    }
+
 
     res.status(200).send({ authorised: true });
   } catch (error) {
