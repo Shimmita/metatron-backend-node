@@ -29,7 +29,7 @@ export const handleGetGlobalSearchResults = async (req, res) => {
         { country: regex },
         // match county or state
         { county: regex },
-        // education instite
+        // education institute
         { eduInstitution: regex },
         // Match specialization
         { specialisationTitle: regex },

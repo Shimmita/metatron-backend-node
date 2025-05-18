@@ -9,11 +9,9 @@ export const handleCreateNewConversation = async (req, res) => {
     const { participants, senderId, content } = req.body;
 
     // lets get target user, user not senderID
-    const targetUserID =
-      participants &&
-      participants.filter((participantID) => participantID !== senderId);
+    const targetUserID =participants?.filter((participantID) => participantID !== senderId);
 
-    //   lets check if both partcipants exists or not (sender,target)
+    //   lets check if both participants exists or not (sender,target)
     const senderUser = await personalModel.findById({ _id: senderId });
     const targetUser = await personalModel.findById({ _id: targetUserID });
 
@@ -45,11 +43,11 @@ export const handleCreateNewConversation = async (req, res) => {
       await conversation.save();
     }
 
-    // conversation now already present lets extract the id and create msge
+    // conversation now already present lets extract the id and create message
     const conversationId = conversation._id;
 
     /* create a new message in the message db by the help of conversationID. 
-    conversation is like a room and the roomm has an id thus each msg has roomId
+    conversation is like a room and the room has an id thus each msg has roomId
     or that conversationId
     */
     const message = new MessageModel({ conversationId, senderId, content });
@@ -81,7 +79,7 @@ export const handleCreateNewConversation = async (req, res) => {
 export const handleSendMessageToConversation = async (req, res) => {
   try {
     // destructure the necessary fields for a message object
-    const { conversationId, senderId, content } = req?.body;
+    const { conversationId, senderId, content } = req?.body || {};
     const message = new MessageModel({ conversationId, senderId, content });
     // save the message
     await message.save();
@@ -108,7 +106,7 @@ export const handleSendMessageToConversation = async (req, res) => {
 export const handleGetUserConvesations = async (req, res) => {
   try {
     // get the userID from the params and search conversation with that Id
-    const { userID } = req?.params;
+    const { userID } = req?.params || {};
 
     // check if the user exist or not
     const user = await personalModel.findById({ _id: userID });
@@ -147,7 +145,7 @@ export const handleGetAllMessageConversation = async (req, res) => {
   }
 };
 
-// update message of the conversation like editing the mesage
+// update message of the conversation like editing the message
 export const handleUpdateMessageConversation = async (req, res) => {
   try {
     // obtain the data from the body request

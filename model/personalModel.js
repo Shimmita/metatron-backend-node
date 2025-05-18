@@ -44,7 +44,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Education level is required"],
       enum: {
-        values: ["Diploma", "Bachelors", "Masters", "PhD"],
+        values: [  "Secondary School",
+  "Diploma Certificate",
+  "Bachelors Degree",
+  "Masters Degree",
+  "Doctorate Degree"],
         message:
           "Invalid education level, should be Diploma, Bachelors, Masters or PhD",
       },

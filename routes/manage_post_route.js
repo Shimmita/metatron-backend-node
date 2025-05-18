@@ -2,24 +2,32 @@ import express from "express";
 import multer from "multer";
 import {
   handleCreateNewPost,
+  handleDeleteCommentReply,
   handleDeletePostReaction,
+  handleDeleteUserComment,
   handleDeleteUserPost,
   handleGetAllPostReportUser,
   handleGetAllPostsReactions,
   handleGetAllPostsUserSpecific,
   handleGetAllTechiePost,
+  handleGetCommentReplies,
   handleGetSpecificPostDetails,
   handleGetTopPosts,
   handleGithubIncremental,
   handlePostCommentsCreate,
   handlePostLiking,
   handlePostReportedDelete,
+  handleReplyComment,
   handleReportPostContent,
+  handleUpdateEditComment,
+  handleUpdateEditCommentReply,
   handleUpdateUserPost,
   handleUpdatingOfPost,
 } from "../controllers/manage_post_controller.js";
 // Set up multer for file uploads
-const uploadMulter = multer({ storage: multer.memoryStorage() });
+const uploadMulter = multer({
+  storage: multer.memoryStorage()
+});
 
 export const postManageRouter = express.Router();
 
@@ -51,20 +59,38 @@ postManageRouter.delete("/delete/:userId/:postId", handleDeleteUserPost);
 // update post likes
 postManageRouter.put("/update/likes", handlePostLiking);
 
-// update the github cliks
+// update the github clicks
 postManageRouter.put("/update/github", handleGithubIncremental);
 
-// update post comments, post entangeld and notification deleteable
+// update post comments, post entangled and notification delete-able
 postManageRouter.put("/update/comments", handlePostCommentsCreate);
+
+// send reply to a comment
+postManageRouter.post("/reply/comments", handleReplyComment)
+
+// fetch replies to a comment
+postManageRouter.get("/reply/comments/:postId/:parentCommentId/:userId", handleGetCommentReplies)
+
+// edit the parent comment
+postManageRouter.put("/edit/comments/", handleUpdateEditComment);
+
+// edit the comment reply
+postManageRouter.put("/edit/reply/comments/", handleUpdateEditCommentReply);
+
+// delete a reply comment
+postManageRouter.delete("/delete/reply/comments/:userId/:commentId", handleDeleteCommentReply);
+
+// delete a user's parent comment entirely
+postManageRouter.delete("/delete/comments/:postId/:userId/:commentId", handleDeleteUserComment);
 
 // update a post details or info specifically body content
 postManageRouter.put("/update/post/:id", handleUpdatingOfPost);
 
-// get all post reactions if they match passedID for it's belongs them as notfication
+// get all post reactions if they match passedID for it's belongs them as notification
 postManageRouter.get("/reactions/all/:id", handleGetAllPostsReactions);
 
-/* delete specific post reaction by unique Ids of the post. a liked user doesnt need this route to delete their
- liked reaction i.e like/unlike coz it will autodelete when they unlike. but the user being notfied that their
+/* delete specific post reaction by unique Ids of the post. a liked user doesn't need this route to delete their
+ liked reaction i.e like/unlike coz it will auto-delete when they unlike. but the user being notfied that their
  post got a like  needs this route to delete the notification reaction */
 postManageRouter.delete("/reactions/delete/:id", handleDeletePostReaction);
 

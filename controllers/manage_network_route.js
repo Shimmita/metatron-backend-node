@@ -3,7 +3,7 @@ import personalModel from "../model/personalModel.js";
 //fetch all networks of a given user
 export const handleFetchAllMyNetwork = async (req, res) => {
   //extracting the user id and array of networks id.
-  const { currentUserID, networks } = req?.body;
+  const { currentUserID, networks } = req?.body || {};
   try {
     //check if user exists or not
     const user = await personalModel.findById(currentUserID);

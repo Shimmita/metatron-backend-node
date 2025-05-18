@@ -9,7 +9,10 @@ import {
   default as TechPostModal,
   default as TechPostModel,
 } from "../model/TechPostModel.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import TechPostRepliesModel from "../model/TechPostRepliesModel.js";
+import {
+  uploadToCloudinary
+} from "../utils/cloudinary.js";
 // creating of new post
 export const handleCreateNewPost = async (req, res) => {
   try {
@@ -20,8 +23,12 @@ export const handleCreateNewPost = async (req, res) => {
     if (req?.file) {
       // Compress and convert the image to AVIF format
       const compressedImageBuffer = await sharp(req.file.buffer)
-        .resize({ width: 500 }) // Resize to a max width of 500px
-        .toFormat("avif", { quality: 80 }) // Convert to AVIF with 80% quality
+        .resize({
+          width: 500
+        }) // Resize to a max width of 500px
+        .toFormat("avif", {
+          quality: 80
+        }) // Convert to AVIF with 80% quality
         .toBuffer();
 
       // Upload the compressed AVIF image to Cloudinary
@@ -30,10 +37,14 @@ export const handleCreateNewPost = async (req, res) => {
         "metatron/post"
       );
 
-      // getting vatar url and ID from the result of cloudinary upload
+      // getting avatar url and ID from the result of cloudinary upload
       const post_url = result.secure_url;
       const post_url_id = result.public_id;
-      await TechPostModal.create({ ...data, post_url, post_url_id });
+      await TechPostModal.create({
+        ...data,
+        post_url,
+        post_url_id
+      });
       res.status(200).send("post uploaded successfully");
     } else {
       // save the user they have no file
@@ -41,7 +52,7 @@ export const handleCreateNewPost = async (req, res) => {
       res.status(200).send("post uploaded successfully");
     }
   } catch (error) {
-    var message = `${error.message}`;
+    let message = `${error.message}`;
     if (message.toLowerCase().includes("cloudinary")) {
       message = "please check your internet connection";
     } else {
@@ -54,7 +65,9 @@ export const handleCreateNewPost = async (req, res) => {
 // handle updating of the post based on its ID
 export const handleUpdatingOfPost = async (req, res) => {
   try {
-    const { post_body } = req?.body;
+    const {
+      post_body
+    } = req?.body || {};
     // extract the post id from the req.params
     const id = req?.params.id;
     // check if post present or not
@@ -72,8 +85,11 @@ export const handleUpdatingOfPost = async (req, res) => {
     // save the post with the updated details
     await post.save();
 
-    // send succes response to the frontend
-    res.status(200).send({ message: "updated successfully", post });
+    // send success response to the frontend
+    res.status(200).send({
+      message: "updated successfully",
+      post
+    });
   } catch (error) {
     // debug
     console.log(error);
@@ -88,7 +104,9 @@ export const handleGetAllTechiePost = async (req, res) => {
   try {
     // retrieve all posts in order of latest first
     const allPosts = await TechPostModal.find({})
-      .sort({ createdAt: -1 })
+      .sort({
+        createdAt: -1
+      })
       .limit(20);
     // posts not made its empty
     if (allPosts.length < 1) {
@@ -108,7 +126,6 @@ export const handleGetAllTechiePost = async (req, res) => {
 export const handleGetTopPosts = async (req, res) => {
   try {
     const posts = await TechPostModal.find().limit(3);
-    console.log(posts)
     res.status(200).send(posts);
   } catch (error) {
     //log the error
@@ -124,9 +141,11 @@ export const handleGetAllPostsUserSpecific = async (req, res) => {
     const userId = req?.params.id;
     // fetch first 20 posts from the database, latest first
     const posts = await TechPostModel.find({
-      "post_owner.ownerId": userId,
-    })
-      .sort({ createdAt: -1 })
+        "post_owner.ownerId": userId,
+      })
+      .sort({
+        createdAt: -1
+      })
       .limit(20);
 
     // send the results to the frontend
@@ -141,10 +160,14 @@ export const handleGetAllPostsUserSpecific = async (req, res) => {
 export const handleGetSpecificPostDetails = async (req, res) => {
   try {
     //extract post id from request params
-    const { id: postId } = req?.params;
+    const {
+      id: postId
+    } = req?.params || {};
 
     // fetch the post from the database
-    const post = await TechPostModel.findById({ _id: postId });
+    const post = await TechPostModel.findById({
+      _id: postId
+    });
     if (!post) {
       throw new Error("post not found!");
     }
@@ -164,10 +187,13 @@ export const handleUpdateUserPost = async (req, res) => {
   const id = req.params.id;
 
   try {
-    await TechPostModal.findByIdAndUpdate(
-      { _id: id },
-      { $set: { post_body: body } }
-    );
+    await TechPostModal.findByIdAndUpdate({
+      _id: id
+    }, {
+      $set: {
+        post_body: body
+      }
+    });
 
     res.status(200).send("post updated successfully");
   } catch (error) {
@@ -178,7 +204,10 @@ export const handleUpdateUserPost = async (req, res) => {
 // delete tech post
 export const handleDeleteUserPost = async (req, res) => {
   // destructuring the ids of post and users from the req params
-  const { userId, postId } = req?.params;
+  const {
+    userId,
+    postId
+  } = req?.params || {};
 
   try {
     // checking if user present based on the params id
@@ -205,7 +234,9 @@ export const handlePostLiking = async (req, res) => {
   try {
     const data = req?.body;
 
-    const post = await TechPostModel.findById({ _id: data.postId });
+    const post = await TechPostModel.findById({
+      _id: data.postId
+    });
 
     // will save the id user currently liking the post in clickers of likes
     const userId = data.userId;
@@ -235,16 +266,22 @@ export const handlePostLiking = async (req, res) => {
       // increment post likes
       post.post_liked.clicks = post.post_liked.clicks + 1;
 
-      // add userId to the clikers array
+      // add userId to the clickers array
       post.post_liked.clickers.push(userId);
 
       // save the updated tech post
       await post.save();
 
       // extract the github, likes and comments of the saved post
-      const { clicks: likes } = post.post_liked;
-      const { clicks: github } = post.post_github;
-      const { count: comments } = post.post_comments;
+      const {
+        clicks: likes
+      } = post.post_liked;
+      const {
+        clicks: github
+      } = post.post_github;
+      const {
+        count: comments
+      } = post.post_comments;
       const report_count = post.report_count;
 
       // save the details of the user liking the  tech post in the reaction section
@@ -273,8 +310,10 @@ export const handlePostLiking = async (req, res) => {
 
       // save the updated post
       await post.save();
-      // remove the current user details in the postreactions details
-      await PostReactionModal.findOneAndDelete({ userId });
+      // remove the current user details in the post-reactions details
+      await PostReactionModal.findOneAndDelete({
+        userId
+      });
 
       const results = {
         post: post,
@@ -287,6 +326,7 @@ export const handlePostLiking = async (req, res) => {
 
     // resave the tech post with the latest updates
   } catch (error) {
+    console.log(error)
     res.status(400).send("something went wrong");
   }
 };
@@ -295,7 +335,9 @@ export const handlePostLiking = async (req, res) => {
 export const handleGithubIncremental = async (req, res) => {
   try {
     const data = req?.body;
-    const post = await TechPostModel.findById({ _id: data.postId });
+    const post = await TechPostModel.findById({
+      _id: data.postId
+    });
     // will save the id user currently liking the post in clickers of github
     const userId = data.userId;
 
@@ -324,16 +366,22 @@ export const handleGithubIncremental = async (req, res) => {
       // increment post likes
       post.post_github.clicks = post.post_github.clicks + 1;
 
-      // add userId to the clikers array of github
+      // add userId to the clickers array of github
       post.post_github.clickers.push(userId);
 
       // save the updated tech post
       await post.save();
 
       // extract the github, likes and comments of the saved post
-      const { clicks: likes } = post.post_liked;
-      const { clicks: github } = post.post_github;
-      const { count: comments } = post.post_comments;
+      const {
+        clicks: likes
+      } = post.post_liked;
+      const {
+        clicks: github
+      } = post.post_github;
+      const {
+        count: comments
+      } = post.post_comments;
       const report_count = post.report_count;
 
       // save the details of the user clicking the github  in the reaction section
@@ -349,6 +397,7 @@ export const handleGithubIncremental = async (req, res) => {
     // send the response of the non mutated tech post object to the frontend
     res.status(200).send(post);
   } catch (error) {
+    console.log(error)
     res.status(400).send("something went wrong");
   }
 };
@@ -358,7 +407,9 @@ export const handlePostCommentsCreate = async (req, res) => {
   try {
     const data = req?.body;
     // searching for post best on the postID passed
-    const post = await TechPostModel.findById({ _id: data.postId });
+    const post = await TechPostModel.findById({
+      _id: data.postId
+    });
 
     // saved in the post itself user comments, contains full comment
     const commentToSave = {
@@ -371,7 +422,7 @@ export const handlePostCommentsCreate = async (req, res) => {
     };
 
     // saved in the notification collection, contains truncate comment
-    // message has two fields separeted by comma, the message and post tiltle
+    // message has two fields separated by comma, the message and post title
     const notificationPostData = {
       postId: data.postId,
       ownerId: data.ownerId,
@@ -405,9 +456,15 @@ export const handlePostCommentsCreate = async (req, res) => {
     await post.save();
 
     // extract the reports, github, likes and comments of the saved post
-    const { clicks: likes } = post.post_liked;
-    const { clicks: github } = post.post_github;
-    const { count: comments } = post.post_comments;
+    const {
+      clicks: likes
+    } = post.post_liked;
+    const {
+      clicks: github
+    } = post.post_github;
+    const {
+      count: comments
+    } = post.post_comments;
     const report_count = post.report_count;
 
     // save the details of the user making the comment in the reaction database
@@ -419,7 +476,7 @@ export const handlePostCommentsCreate = async (req, res) => {
       report_count,
     });
 
-    // send the response to the frontend the objecte mutated
+    // send the response to the frontend the object mutated
     res.status(200).send(post);
 
     // resave the tech post with the latest updates
@@ -429,16 +486,340 @@ export const handlePostCommentsCreate = async (req, res) => {
   }
 };
 
+
+// handle reply to a comment
+export const handleReplyComment = async (req, res) => {
+  // extract the reply data from the body
+  const dataReply = req?.body || {}
+
+  try {
+    // check exists user, post, parent-Comment 
+    const user = await personalModel.findById(dataReply?.userId)
+    const post = await TechPostModel.findById(dataReply?.parentPostId)
+    //  using the post, check if the parent comment exists before reply
+    const parentComment = post?.post_comments?.comments?.filter(comment => comment.id === dataReply?.parentCommentId)
+
+    if (!user) {
+      throw new Error("user not found!");
+    }
+    if (!post) {
+      throw new Error("post not found!");
+    }
+
+    if (!parentComment) {
+      throw new Error("parent comment not found!");
+    }
+
+    // save the reply in its respective db
+    await TechPostRepliesModel.create(dataReply)
+
+    // update the general comments counter on the parent post,increase
+    post.post_comments.count = post.post_comments.count + 1;
+
+    // increment the in context parent comment its replies counter
+    let commentUpdated = post.post_comments.comments.find(comment => comment.id === dataReply?.parentCommentId)
+    // updating the reply counter of the comment
+    commentUpdated.replyCount = commentUpdated.replyCount + 1
+
+    // getting the comments lists that have no this parent comment based on the ids
+    let excludedComments = post.post_comments.comments.filter(comment => comment.id !== dataReply?.parentCommentId)
+
+    // joining the comments with the comment in context its counter incremented
+    post.post_comments.comments = [commentUpdated, ...excludedComments]
+
+    // save the updated post with incremented comments count
+    await post.save()
+
+    // send the post object to the frontend
+    res.status(200).send(post)
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+
+}
+
+// handle getting or fetching of comment replies
+export const handleGetCommentReplies = async (req, res) => {
+  // extract parent comment id and user id and main post id
+  const parentCommentId = req?.params?.parentCommentId
+  const userId = req?.params?.userId
+  const postId = req?.params?.postId
+
+  try {
+    // find user with the passedId
+    const user = await personalModel.findById(userId)
+    // find the post with the passed Id
+    const post = await TechPostModel.findById(postId)
+
+    // locate parent comment in the post if it exists
+    const parentComment = post?.post_comments?.comments?.filter(comment => comment.id === parentCommentId)
+
+
+    if (!user) {
+      throw new Error("user not found!");
+    }
+
+    if (!post) {
+      throw new Error("post not found!");
+    }
+
+    if (!parentComment) {
+      throw new Error("parent comment not found!");
+    }
+
+    // fetch all comment replies associated with the parent comment 
+    const replies = await TechPostRepliesModel.find({
+      parentCommentId
+    }).sort({
+      createdAt: -1
+    });
+
+    // send response to the frontend
+    res.status(200).send(replies)
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+}
+
+// update or edit the parent comments
+export const handleUpdateEditComment = async (req, res) => {
+  const {
+    postId,
+    userId,
+    commentId,
+    replyText
+  } = req?.body || {}
+
+  try {
+    // check exists post and user
+    const user = await personalModel.findById(userId)
+    const post = await TechPostModel.findById(postId)
+
+    if (!user) {
+      throw new Error("user not found!");
+    }
+    if (!post) {
+      throw new Error("post not found!");
+    }
+
+
+    // filtered individual comment
+    let commentUpdated = post.post_comments.comments.find(comment => comment.id === commentId)
+    // updating the contents of the comment
+    commentUpdated.edited = true
+    commentUpdated.minimessage = replyText
+
+    // getting the comments lists that have no this current comment based on the ids
+    let excludedComments = post.post_comments.comments.filter(comment => comment.id !== commentId)
+
+    // joining the comments
+    post.post_comments.comments = [commentUpdated, ...excludedComments]
+
+    // saving the post
+    await post.save()
+
+    // send the post object to the frontend
+    res.status(200).send(post)
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+}
+
+// update a reply comment
+export const handleUpdateEditCommentReply = async (req, res) => {
+  const {
+    userId,
+    commentId,
+    replyText
+  } = req?.body || {}
+
+  try {
+    // check exists user and comment
+    const user = await personalModel.findById(userId)
+    // check in the comments reply db, if the reply exists
+    const comment = await TechPostRepliesModel.findById(commentId)
+
+    // user does not exist
+    if (!user) {
+      throw new Error("user not found!");
+    }
+    // comment does not exist
+    if (!comment) {
+      throw new Error("comment not found!");
+    }
+
+    // update the comment details
+    comment.edited = true
+    comment.minimessage = replyText
+
+    // save the comment reply with the updated details
+    await comment.save()
+
+    // fetch all comment replies associated with the parent comment 
+    const replies = await TechPostRepliesModel.find({
+      parentCommentId: comment.parentCommentId
+    }).sort({
+      createdAt: -1
+    });
+
+    // send response to the fronted
+    res.status(200).send(replies)
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+}
+
+
+// delete a comment reply
+export const handleDeleteCommentReply = async (req, res) => {
+  // extract details from the params
+  const {
+    userId,
+    commentId,
+  } = req?.params || {}
+
+  try {
+
+    // check exists user and comment
+    const user = await personalModel.findById(userId)
+
+    // check in the comments reply db, if the reply exists
+    const comment = await TechPostRepliesModel.findById(commentId)
+    // user does not exist
+    if (!user) {
+      throw new Error("user not found!");
+    }
+    // comment does not exist
+    if (!comment) {
+      throw new Error("comment reply not found!");
+    }
+
+    // parent post
+    const parentPost = await TechPostModal.findById(comment.parentPostId)
+
+    // parent commentId that the reply was referencing
+    const parentCommentId = comment.parentCommentId
+
+    // updating the counters for parent comment associated with the Reply
+    // also updating the general counter of the comments
+
+    // filtered comments
+    let commentsFiltered = parentPost.post_comments.comments.filter(comment => comment.id !== parentCommentId)
+
+    // parent comment to update its counter
+    let parentComment = parentPost.post_comments.comments.find(comment => comment.id === parentCommentId)
+
+    // updating the comments before save
+    parentPost.post_comments.comments = [...commentsFiltered]
+
+    // decrement comment counts
+    parentPost.post_comments.count = parentPost.post_comments.count - 1;
+
+    // decrement the parent-comment reply comments
+    parentComment.replyCount = parentComment.replyCount - 1
+
+    // updating the comments before save
+    parentPost.post_comments.comments = [parentComment, ...commentsFiltered]
+
+    // save the updated parent post which will content updated parent comment reply count
+    await parentPost.save()
+
+    // deleting the reply  
+    await TechPostRepliesModel.findByIdAndDelete(commentId)
+
+    // fetch all comment replies associated with the parent comment 
+    const replies = await TechPostRepliesModel.find({
+      parentCommentId: comment.parentCommentId
+    }).sort({
+      createdAt: -1
+    });
+
+    // sending to the frontend response, postObject and repliesData
+    let responseData = {
+      parentPost,
+      replies
+    }
+
+    // sending now
+    res.status(200).send(responseData)
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+
+}
+
+// delete comment of the user
+export const handleDeleteUserComment = async (req, res) => {
+  const {
+    postId,
+    userId,
+    commentId
+  } = req?.params || {}
+
+  try {
+    // check exists post and user
+    const user = await personalModel.findById(userId)
+    const post = await TechPostModel.findById(postId)
+
+    if (!user) {
+      throw new Error("user not found!");
+    }
+    if (!post) {
+      throw new Error("post not found!");
+    }
+
+    // filtered comments
+    let commentsUpdated = post.post_comments.comments.filter(comment => comment.id !== commentId)
+
+    // parent individual comment to extract its replyCount
+    let parentComment = post.post_comments.comments.find(comment => comment.id === commentId)
+
+    // updating the comments before save
+    post.post_comments.comments = [...commentsUpdated]
+
+    // decrement the overall comment counts, comment and its sub-replies
+    post.post_comments.count = post.post_comments.count - 1 - parentComment.replyCount;
+
+    // save the post
+    await post.save()
+
+    // delete the entire replies that are associated with this parent comment too
+    await TechPostRepliesModel.deleteMany({
+      parentCommentId: commentId
+    })
+
+    // send the post object to the frontend
+    res.status(200).send(post)
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+
+}
+
 // get all tech posts reactions from the backend
 export const handleGetAllPostsReactions = async (req, res) => {
   try {
-    // use the userID against ownersIDs in the notif if match result response
+    // use the userID against ownersIDs in the notification if match result response
     const currentUserId = req?.params?.id;
 
     // fetch all matching post reaction collection
     const post_reaction = await PostReactionModel.find({
       ownerId: currentUserId,
-    }).sort({ createdAt: -1 });
+    }).sort({
+      createdAt: -1
+    });
     // fetch all matching comments collection etc
 
     // send response to the frontend
@@ -450,19 +831,21 @@ export const handleGetAllPostsReactions = async (req, res) => {
   }
 };
 
-// handle the deleteion of the reaction of a given  tech post posted by the current user.
+// handle the deletion of the reaction of a given  tech post posted by the current user.
 export const handleDeletePostReaction = async (req, res) => {
   const post_reactionID = req?.params.id;
 
   try {
-    await PostReactionModel.findByIdAndDelete({ _id: post_reactionID });
+    await PostReactionModel.findByIdAndDelete({
+      _id: post_reactionID
+    });
     res.status(200).send("Deleted Successfully");
   } catch (error) {
     res.status(400).send("Something Went Wrong " + error.message);
   }
 };
 
-// handle creation of a report about a given post due to its content being sensored
+// handle creation of a report about a given post due to its content being sensor
 export const handleReportPostContent = async (req, res) => {
   try {
     const dataReport = req?.body;
@@ -473,18 +856,24 @@ export const handleReportPostContent = async (req, res) => {
     const postOwnerId = dataReport.postOwnerId;
 
     // check if the post in the tech post collection is exists
-    const post = await TechPostModal.findById({ _id: postId });
+    const post = await TechPostModal.findById({
+      _id: postId
+    });
     // checks if owner exists
-    const reporterUserr = await personalModel.findById({ _id: reporterId });
+    const reporterUser = await personalModel.findById({
+      _id: reporterId
+    });
     // checks if owner exists
-    const postOwner = await personalModel.findById({ _id: postOwnerId });
+    const postOwner = await personalModel.findById({
+      _id: postOwnerId
+    });
 
     // post does not exist
     if (!post) {
       throw new Error("post being reported not found!");
     }
     // reporting user does not exist
-    if (!reporterUserr) {
+    if (!reporterUser) {
       throw new Error("reporting user does not exist!");
     }
 
@@ -513,9 +902,9 @@ export const handleReportPostContent = async (req, res) => {
     res
       .status(400)
       .send(
-        error.message?.includes("duplicate")
-          ? "report already saved"
-          : error.message
+        error.message?.includes("duplicate") ?
+        "report already saved" :
+        error.message
       );
   }
 };
@@ -526,7 +915,9 @@ export const handleGetAllPostReportUser = async (req, res) => {
     // get id passed as req params
     const ownerId = req?.params.ownerId;
     // check if the owner exists
-    const postOwner = await personalModel.findById({ _id: ownerId });
+    const postOwner = await personalModel.findById({
+      _id: ownerId
+    });
 
     if (!postOwner) {
       throw new Error("post owner does not exist!");
@@ -535,11 +926,13 @@ export const handleGetAllPostReportUser = async (req, res) => {
     // fetch all post reports where owner is contains the ownerId and filter what
     // is returned: postId, post_title, report_about, report_desc, ownerViewed.
     const postReports = await ReportPostModal.find({
-      postOwnerId: ownerId,
-      post_owner_viewed: false,
-    })
+        postOwnerId: ownerId,
+        post_owner_viewed: false,
+      })
       .limit(20)
-      .sort({ updatedAt: -1 });
+      .sort({
+        updatedAt: -1
+      });
 
     // return the results to the frontend
     res.status(200).send(postReports);
@@ -552,7 +945,7 @@ export const handleGetAllPostReportUser = async (req, res) => {
 };
 
 // handle post delete report, the owner viewed report will be updated but post report wont
-// be deleted for further analysis by the techincal team.
+// be deleted for further analysis by the technical team.
 export const handlePostReportedDelete = async (req, res) => {
   try {
     const id = req?.params.id;
@@ -563,7 +956,9 @@ export const handlePostReportedDelete = async (req, res) => {
     }
 
     // report found thus update owner viewed
-    await ReportPostModal.findByIdAndUpdate(id, { post_owner_viewed: true });
+    await ReportPostModal.findByIdAndUpdate(id, {
+      post_owner_viewed: true
+    });
     // send success response to the frontend
     res.status(200).send("completed successfully");
   } catch (error) {

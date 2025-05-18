@@ -1,5 +1,7 @@
 import app from "express";
 import {
+  handleCompletePaswordReset,
+  handleResetPassword,
   handleSigninPersonal,
   handleSignupPersonal,
   handleSignupPersonalMongo,
@@ -23,8 +25,15 @@ authenticationRouter.post(
   handleSignupPersonalMongo
 );
 
+// forgot password route
+authenticationRouter.post("/personal/reset", handleResetPassword);
+
+// complete password reset route
+authenticationRouter.post("/personal/reset/complete", handleCompletePaswordReset);
 
 // signin users without provider
 authenticationRouter.post("/personal", handleSigninPersonal);
+
+
 
 export default authenticationRouter;

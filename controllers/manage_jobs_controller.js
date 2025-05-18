@@ -30,13 +30,13 @@ export const handleCreateJob = async (req, res) => {
       await JobPostModel.create({ ...data, logo, logoID });
       res.status(200).send("post uploaded successfully");
     } else {
-      // save the user they have no file especially upladed logo
+      // save the user they have no file especially uploaded logo
       await JobPostModel.create(data);
       res.status(200).send("post uploaded successfully");
     }
   } catch (error) {
     
-    var message = `${error.message}`;
+    let message = `${error.message}`;
     if (message.toLowerCase().includes("cloudinary")) {
       message = "please check your internet connection";
     } else {
@@ -71,7 +71,7 @@ export const handleGetAllJobs = async (req, res) => {
   }
 };
 
-// get top 3 jobs that are lates
+// get top 3 jobs that are latest
 export const handleGetTopJobs = async (req, res) => {
   try {
     // sort them the latest first
@@ -93,7 +93,7 @@ export const handleGetTopJobs = async (req, res) => {
   }
 };
 
-// get verified jobs onlyd
+// get verified jobs only
 export const handleGetVerifiedJobs = async (req, res) => {
   try {
     const allJobs = await JobPostModel.find({
@@ -239,6 +239,7 @@ export const handleGetSpecificJobPost = async (req, res) => {
     // job found
     res.status(200).send(job);
   } catch (error) {
+    console.log(error)
     res.status(400).send("job not found");
   }
 };
@@ -294,8 +295,8 @@ export const handleJobApplication = async (req, res) => {
         throw new Error("job does not exist");
       }
 
-      // update the detais of applicants present in the job attribute
-      var { total, male, female, other } = jobTarget.applicants;
+      // update the details of applicants present in the job attribute
+      let { total, male, female, other } = jobTarget.applicants;
       // add +1 for total
       jobTarget.applicants.total = total + 1;
       // update male, female and other counts
@@ -313,7 +314,7 @@ export const handleJobApplication = async (req, res) => {
       // save the target and updated job results
       await jobTarget.save();
 
-      //save the applican job request in the database
+      //save the application job request in the database
       await JobsAppliedModel.create({
         ...dataBody,
         cvLink: publicUrl,

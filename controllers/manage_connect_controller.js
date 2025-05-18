@@ -43,9 +43,9 @@ export const handleCreateNewConnectionRequest = async (req, res) => {
     // locate the networks array where all users friends and connections are saved.
     // the user Id will be the senderID and value of network be targetID as friend being added
     // check if the targetId is present in the friends of the sender id or not to add them.
-    var friendsArraySender = currentUserDetails.network;
+    let friendsArraySender = currentUserDetails.network;
 
-    var friendsArrayTargetUser = targetUser.network;
+    let friendsArrayTargetUser = targetUser.network;
 
     // checking the existance of target userId in the friends of sender
     if (friendsArraySender.includes(targetId)) {

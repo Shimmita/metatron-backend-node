@@ -3,10 +3,16 @@ import admin from "firebase-admin";
 import sharp from "sharp";
 import validator from "validator";
 import PersonalModel from "../model/personalModel.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import ResetCodeModal from "../model/ResetCodeModal.js";
+import {
+  uploadToCloudinary
+} from "../utils/cloudinary.js";
 // msg sent to frontend after successful registration
 const successMsg =
   "Your account has been created successfully login to explore the world of IT";
+
+
+
 
 const handleSignupPersonal = async (req, res) => {
   // Get token from params
@@ -68,8 +74,12 @@ const handleSignupPersonal = async (req, res) => {
         // user has an image file passed as request
         // Compress and convert the image to AVIF format
         const compressedImageBuffer = await sharp(req.file.buffer)
-          .resize({ width: 500 }) // Resize to a max width of 500px
-          .toFormat("webp", { quality: 80 }) // Convert to AVIF with 80% quality
+          .resize({
+            width: 500
+          }) // Resize to a max width of 500px
+          .toFormat("webp", {
+            quality: 80
+          }) // Convert to AVIF with 80% quality
           .toBuffer();
 
         // Upload the compressed AVIF image to Cloudinary
@@ -127,20 +137,25 @@ const handleSignupPersonalMongo = async (req, res) => {
     const user = JSON.parse(req.body?.user);
 
     // extracting password and email from the body request
-    const { password, email } = user;
+    const {
+      password,
+      email
+    } = user;
 
     // check if the provided email is valid like acceptable email
     if (!validator.isEmail(email)) {
       throw new Error("Provided email is  malformed!");
     }
 
-    // passwords must be aleast 6 characters
+    // passwords must be atleast 6 characters
     if (password.length < 6) {
       throw new Error("Password too short must be 6 characters minimum!");
     }
 
     // check if a user exists in the database based on email first which is unique
-    const userFetch = await PersonalModel.findOne({ email });
+    const userFetch = await PersonalModel.findOne({
+      email
+    });
 
     if (userFetch) {
       throw new Error("User already registered!");
@@ -163,8 +178,12 @@ const handleSignupPersonalMongo = async (req, res) => {
       // save user with an avatar
       // Compress and convert the image to AVIF format
       const compressedImageBuffer = await sharp(req.file.buffer)
-        .resize({ width: 500 }) // Resize to a max width of 500px
-        .toFormat("avif", { quality: 80 }) // Convert to AVIF with 80% quality
+        .resize({
+          width: 500
+        }) // Resize to a max width of 500px
+        .toFormat("avif", {
+          quality: 80
+        }) // Convert to AVIF with 80% quality
         .toBuffer();
 
       // Upload the compressed AVIF image to Cloudinary
@@ -195,7 +214,10 @@ const handleSignupPersonalMongo = async (req, res) => {
 
 // signin user to personal account no provider
 const handleSigninPersonal = async (req, res) => {
-  const { email, password } = req?.body;
+  const {
+    email,
+    password
+  } = req?.body || {};
 
   try {
     // check if the provided email is valid like acceptable email
@@ -204,10 +226,12 @@ const handleSigninPersonal = async (req, res) => {
     }
 
     // passwords must be aleast 6 characters
-    if (password.length < 8) {
-      throw new Error("password too short must be 8 characters minimum!");
+    if (password.length < 6) {
+      throw new Error("password too short must be 6 characters minimum!");
     }
-    const user = await PersonalModel.findOne({ email });
+    const user = await PersonalModel.findOne({
+      email
+    });
     // user does not exist
     if (!user) {
       throw new Error(
@@ -232,9 +256,142 @@ const handleSigninPersonal = async (req, res) => {
   }
 };
 
+// handle reset password
+const handleResetPassword = async (req, res) => {
+  const {
+    email,
+    phone
+  } = req?.body || {};
+
+  try {
+    // check if the provided email is valid like acceptable email
+    if (!validator.isEmail(email)) {
+      throw new Error("Provided email is malformed!");
+    }
+
+
+    const user = await PersonalModel.findOne({
+      email
+    });
+
+    // user does not exist
+    if (!user) {
+      throw new Error(
+        "user not found create new account to access our services!"
+      );
+    }
+
+    // check if provided phone number matches with the one present in DB
+    if (user.phone !== phone) {
+      throw new Error("provided phone number is invalid")
+    }
+
+    // check if any previous reset code exists in the database
+    const resetCode = await ResetCodeModal.findOne({
+      email
+    });
+    // if it exists, delete it
+    if (resetCode) {
+      // delete the previous reset code
+      await ResetCodeModal.findOneAndDelete({
+        email
+      });
+    }
+
+    // save in the reset request in the reset code modal
+    await ResetCodeModal.create({
+      email,
+    });
+
+
+    // password reset code request successful
+    res.status(200).json({
+      message: 'reset your password now',
+      status: true
+    })
+
+
+  } catch (error) {
+    // monitor the error
+    console.error('Failed to send email:', error);
+    // send the error to the frontend
+    res.status(400).json({
+      message: error.message,
+      status: false
+    });
+  }
+};
+
+
+// complete password reset
+const handleCompletePaswordReset = async (req, res) => {
+  const {
+    email,
+    newPassword,
+
+
+  } = req?.body || {};
+
+
+  try {
+    // check if the provided email is valid like acceptable email
+    if (!validator.isEmail(email)) {
+      throw new Error("Provided email is malformed!");
+    }
+
+    // passwords must be aleast 6 characters  
+    if (newPassword?.length < 6) {
+      throw new Error("password too short must be 6 characters minimum!");
+    }
+
+    // check if this email exists in the resetCode database else reject
+    const emilCheck = await ResetCodeModal.findOne({
+      email
+    })
+
+    if (!emilCheck) {
+      throw new Error("please request for a reset code first");
+    }
+
+    // using bcrypt to encrypt user password
+    const hashedpass = await bcrypt.hash(newPassword, 10);
+
+    //save this new password to the database of the user
+    await PersonalModel.findOneAndUpdate({
+      email
+    }, {
+      password: hashedpass,
+
+
+    }, {
+      new: true
+    });
+    // delete the reset code from the database
+    await ResetCodeModal.findOneAndDelete({
+      email
+    })
+
+    res.status(200).json({
+      message: 'password reset successfully',
+      status: true
+    })
+
+  } catch (error) {
+    // monitor the error
+    console.error('Failed to send email:', error);
+    // send the error to the frontend
+    res.status(400).json({
+      message: error.message,
+      status: false
+    });
+  }
+};
+
+
 export {
+  handleCompletePaswordReset,
+  handleResetPassword,
   handleSigninPersonal,
   handleSignupPersonal,
   handleSignupPersonalMongo
 };
-

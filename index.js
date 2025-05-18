@@ -24,7 +24,7 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.CROSS_ORIGIN_ALLOWED,
     credentials: true,
   })
 );
@@ -46,13 +46,13 @@ app.listen(PORT, () => {
   console.log(`server running on http://localhost:${PORT}`);
 });
 
-// initialise mongoDB session for session storage
+// Initialize mongoDB session for session storage
 const store = new mongoDBSession({
   uri: process.env.MONGO_CONNECTION_URI,
   collection: process.env.SESSION_STORE_NAME,
 });
 
-// session initialisation
+// session initialization
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -71,6 +71,10 @@ app.use(`${BASE_ROUTE}/signup`, authenticationRouter);
 
 // signin users
 app.use(`${BASE_ROUTE}/signin`, authenticationRouter);
+
+// forgot password route
+app.use(`${BASE_ROUTE}/account`, authenticationRouter);
+
 
 // posts route
 app.use(`${BASE_ROUTE}/posts`, handleAuthMiddleware, postManageRouter);
