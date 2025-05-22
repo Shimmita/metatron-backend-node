@@ -8,16 +8,19 @@ const jobAppliedSchema = new mongoose.Schema(
         required: [true, "applicant name is required"],
         trim: true,
       },
-      ID: {
+      
+      applicantID: {
         type: String,
         required: [true, "applicant ID is required"],
         trim: true,
       },
+
       gender: {
         type: String,
         required: [true, "applicant gender is required"],
         trim: true,
       },
+
       country: {
         type: String,
         required: [true, "applicant country is required"],
@@ -43,6 +46,15 @@ const jobAppliedSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    status:{
+      type:String,
+      required: false,
+      default: "pending",
+      enum: {
+        values: ["pending", "proceed", "rejected"],
+        message: "application status must be pending, proceed or rejected",
+      },
+    }
   },
   {
     timestamps: true,

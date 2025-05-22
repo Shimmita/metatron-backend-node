@@ -2,36 +2,43 @@ import mongoose from "mongoose";
 import personalModel from "../model/personalModel.js";
 
 // controls sending the request to the deployed Ai model for response
-export const handleGetSpecifcUser = async (req, res) => {
+export const handleGetSpecificUser = async (req, res) => {
   try {
     // extract the id passed in req
     const userId = new mongoose.Types.ObjectId(req?.params.id);
+    // no id
+    if (!userId) {
+      throw new Error('something went wrong')
+    }
+
     // look for a user with the matching id and return
-    const user = await personalModel.findById(
-      { _id: userId },
-      {
-        name: 1,
-        specialisationTitle: 1,
-        country: 1,
-        county: 1,
-        selectedSkills: 1,
-        network_count: 1,
-        createdAt: 1,
-        network: 1,
-        email: 1,
-        phone: 1,
-        about: 1,
-      }
-    );
+    const user = await personalModel.findById({
+      _id: userId && userId
+    }, {
+      name: 1,
+      specialisationTitle: 1,
+      country: 1,
+      county: 1,
+      selectedSkills: 1,
+      network_count: 1,
+      createdAt: 1,
+      network: 1,
+      email: 1,
+      phone: 1,
+      about: 1,
+    });
+
+    // no user
     if (!user) {
       throw new Error(
-        "user not found they may be suspended or deleted from the platform!"
+        "user not found!"
       );
     }
 
     // return the results to the frontend
     res.status(200).send(user);
   } catch (error) {
+    console.log(error)
     res.status(400).send(error.message);
   }
 };
@@ -52,10 +59,14 @@ export const handleGetUserIsOnline = async (req, res) => {
 
     if (sessionExists) {
       // session exists user is online
-      res.status(200).send({ isOnline: true });
+      res.status(200).send({
+        isOnline: true
+      });
     } else {
       // session does not exist user is offline
-      res.status(200).send({ isOnline: false });
+      res.status(200).send({
+        isOnline: false
+      });
     }
   } catch (error) {
     // debug
@@ -76,7 +87,10 @@ export const handleGetSearchingUser = async (req, res) => {
     // Return up to 3 results
     const users = await personalModel
       .find({
-        name: { $regex: search, $options: "i" },
+        name: {
+          $regex: search,
+          $options: "i"
+        },
       })
       .limit(3);
 
@@ -151,7 +165,10 @@ export const handleUserUpdateDetails = async (req, res) => {
     // send the response to the frontend
     res
       .status(200)
-      .send({ message: "changes updated successfully", data: user });
+      .send({
+        message: "changes updated successfully",
+        data: user
+      });
   } catch (error) {
     // debug
     console.log(error.message);

@@ -1,18 +1,19 @@
 import app from "express";
 import {
     handleGetSearchingUser,
-    handleGetSpecifcUser,
+    handleGetSpecificUser ,
     handleGetUserIsOnline,
     handleUserUpdateDetails,
 } from "../controllers/manage_users_controller.js";
 
 import multer from "multer";
 const manageUsersRoute = app.Router();
-// Set up multer for file uploads
+
+// set up multer for file uploads
 const uploadMulter = multer({ storage: multer.memoryStorage() });
 
 //get specific user
-manageUsersRoute.get("/all/:id", handleGetSpecifcUser);
+manageUsersRoute.get("/all/specific/:id", handleGetSpecificUser);
 
 // check if specific user is online or not route based on session data
 manageUsersRoute.get("/all/online/:userID", handleGetUserIsOnline);

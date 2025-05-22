@@ -74,7 +74,7 @@ export const handleCreateNewConversation = async (req, res) => {
 };
 
 // handle sending of message to an existing conversation, conversationID will be
-// helpful in categorising the messages to their respective conversation.
+// helpful in categorizing the messages to their respective conversation.
 
 export const handleSendMessageToConversation = async (req, res) => {
   try {
@@ -134,6 +134,8 @@ export const handleGetAllMessageConversation = async (req, res) => {
     const messages = await MessageModel.find({
       conversationId: req.params.conversationId,
     });
+
+    
 
     // send the messages to the frontend
     res.status(200).send(messages);
