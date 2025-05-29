@@ -16,8 +16,9 @@ export const handleFetchAllMyNetwork = async (req, res) => {
     //user exists, loop through the array and return the list of users based on projection filter
     const networkUsers = await personalModel.find(
       { _id: { $in: user.network } },
-      "name specialisationTitle country county"
+      "name specialisationTitle country county selectedSkills"
     );
+
 
     //send the results to the frontend
     res.status(200).send(networkUsers);

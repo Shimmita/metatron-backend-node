@@ -79,7 +79,7 @@ export const handleCreateNewConversation = async (req, res) => {
 export const handleSendMessageToConversation = async (req, res) => {
   try {
     // destructure the necessary fields for a message object
-    const { conversationId, senderId, content } = req?.body || {};
+    const { conversationId, senderId,senderName, content } = req?.body || {};
     const message = new MessageModel({ conversationId, senderId, content });
     // save the message
     await message.save();
@@ -88,6 +88,7 @@ export const handleSendMessageToConversation = async (req, res) => {
     await ConversationModel.findByIdAndUpdate(conversationId, {
       lastMessage: content,
       lastSenderId: senderId,
+      senderName,
       isTargetRead: false,
       updatedAt: Date.now(),
     });

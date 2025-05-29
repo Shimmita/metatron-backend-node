@@ -25,8 +25,8 @@ const jobSchema = new mongoose.Schema({
       type: String,
       required: [true, "job type is required"],
       enum: {
-        values: ["Contract", "Full-Time"],
-        message: "job type must be Contract, or Full-Time",
+        values: ["Contract", "Full-Time","Internship"],
+        message: "job type must be Contract,Full-Time or internship",
       },
     },
 
@@ -122,7 +122,8 @@ const jobSchema = new mongoose.Schema({
 
   data_email: {
     type: String,
-    required: [true, "job application email is required"],
+    required: false,
+    default:'',
     trim: true,
     lowercase: true,
   },
@@ -156,8 +157,17 @@ const jobSchema = new mongoose.Schema({
     },
   },
 
-  // below are temp values that varies based on user job activity
+  status: {
+    type: String,
+    required: false,
+    default: "active",
+    enum: {
+      values: ["active", "inactive", ],
+      message: "job status must be active or inactive",
+    },
+  },
 
+  // below are temp values that varies based on user job activity
   // tracks current user application status
   currentUserApplied: {
     type: Boolean,
@@ -174,8 +184,8 @@ const jobSchema = new mongoose.Schema({
 
   },
 
-  // tracks cv link of the current user
-  cvLink: {
+  // tracks doc name of the current user
+  cvName: {
     type: String,
     required: false,
     default: '',
@@ -185,7 +195,8 @@ const jobSchema = new mongoose.Schema({
   dateApplied: {
     type: Date,
     required: false
-  }
+  },
+  
 }, {
   timestamps: true,
 });

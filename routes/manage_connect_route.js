@@ -35,7 +35,7 @@ manageConnectRequestRoute.get(
   handleGetAllConnectionRequest
 );
 
-// get 10 users latest which are not frineds to the current user for connect req
+// get 10 users latest which are not friends to the current user for connect req
 // like system recommendation
 manageConnectRequestRoute.get(
   "/connection/users/:id",

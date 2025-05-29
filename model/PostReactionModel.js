@@ -72,6 +72,18 @@ const PostReactionModal = new mongoose.Schema(
       required: [true, "report count of the post is required"],
       trim: true,
     },
+
+    country: {
+      type: String,
+      required: [true, "country  is required"],
+      trim: true,
+    },
+
+    county: {
+      type: String,
+      required: [true, "state  is required"],
+      trim: true,
+    },
   },
   {
     timestamps: true,

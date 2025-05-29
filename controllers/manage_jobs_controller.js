@@ -2,12 +2,24 @@ import {
   createClient
 } from "@supabase/supabase-js";
 import sharp from "sharp";
+import JobFeedBackModal from "../model/JobFeedBackModal.js";
 import JobPostModel from "../model/JobPostModel.js";
 import JobsAppliedModel from "../model/JobsAppliedModel.js";
 import personalModel from "../model/personalModel.js";
 import {
   uploadToCloudinary
 } from "../utils/cloudinary.js";
+import mongoose from "mongoose";
+
+// supabase constants
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE = createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET
+
+// cloudinary init
+const CLOUDINARY_POST_IMAGES_PATH = process.env.CLOUDINARY_POST_IMAGES_PATH
+
 
 // creating of new post
 export const handleCreateJob = async (req, res) => {
@@ -24,13 +36,13 @@ export const handleCreateJob = async (req, res) => {
         }) // Resize to a max width of 500px
         .toFormat("webp", {
           quality: 80
-        }) // Convert to AVIF with 80% quality
+        }) // Convert to webp with 80% quality
         .toBuffer();
 
       // Upload the compressed AVIF image to Cloudinary
       const result = await uploadToCloudinary(
         compressedImageBuffer,
-        "metatron/jobs/posts"
+        CLOUDINARY_POST_IMAGES_PATH
       );
 
       // getting avatar url and ID from the result of cloudinary upload
@@ -41,11 +53,14 @@ export const handleCreateJob = async (req, res) => {
         logo,
         logoID
       });
-      res.status(200).send("post uploaded successfully");
+      res.status(200).send("post upload successful");
     } else {
       // save the user they have no file especially uploaded logo
       await JobPostModel.create(data);
-      res.status(200).send("post uploaded successfully");
+
+      // fetch top 4 jobs and send to the frontend to update the top jobs,
+      // suppose the user was in hr page, all jobs will be fetched automatically so no need.
+      res.status(200).send("job upload successful");
     }
   } catch (error) {
 
@@ -143,7 +158,6 @@ export const handleGetAllJobsHiring = async (req, res) => {
       );
     }
 
-
     // jobs present
     res.status(200).send(allJobs);
 
@@ -191,13 +205,330 @@ export const handleGetJobApplicantsHiring = async (req, res) => {
 
     // send the response to the frontend
     res.status(200).send(jobApplicants)
-    
+
   } catch (error) {
     console.log(error)
     res.status(400).send(error?.message)
   }
 
 }
+
+// handle updating of the job application status
+export const handleUpdateJobApplicationStatusHiring = async (req, res) => {
+  // extract userId passed in the params
+  const {
+    emailId,
+    jobId,
+  } = req?.params || {}
+
+  //  extract the status text from the body request
+  const {
+    statusText,
+    jobApplicationID,
+    applicantID
+  } = req?.body || {}
+
+
+  try {
+
+    // check if user the hiring manager and job posted exists
+    const user = await personalModel.findOne({
+      email: emailId
+    })
+    const job = await JobPostModel.findById(jobId)
+
+    // user not found
+    if (!user) {
+      throw new Error('hiring manager not found!')
+    }
+
+    // job not found
+    if (!job) {
+      throw new Error('job not found!')
+    }
+
+
+    // locate the specific job to update its status
+    const jobToUpdate = await JobsAppliedModel.findById(jobApplicationID)
+
+
+    // fetch in jobFeedBack if the jobTitle and TargetUserId are already
+    const jobFeedBackResult = await JobFeedBackModal.findOne({
+      $and: [{
+        targetId: applicantID
+      }, {
+        title: job?.title
+      }],
+    })
+
+    // true cv viewed
+    jobToUpdate.viewed = true
+
+    // update status tex
+    jobToUpdate.status = statusText
+
+    // save the updated job
+    await jobToUpdate.save()
+
+    // create the job feedBack db if it does not exist for this target user and specific job title
+    if (!jobFeedBackResult) {
+      await JobFeedBackModal.create({
+        avatar: job?.logo || job?.logoID,
+        country: job?.location?.country,
+        state: job?.location.state,
+        name: job?.organisation?.name,
+        title: job?.title,
+        targetId: applicantID,
+      })
+    }
+
+
+    // send the response of status to the frontend
+    res.status(200).send(jobToUpdate.status)
+
+  } catch (error) {
+    // debug
+    console.log(error)
+    // send error response to the client
+    res.status(400).send(error?.message)
+  }
+
+}
+
+
+// handle updating of job status posted by the hr
+export const handleUpdateJobStatusHiring = async (req, res) => {
+  // extract userId passed in the params
+  const {
+    emailId,
+    jobId,
+  } = req?.params || {}
+
+  //  extract the status text from the body request
+  const {
+    statusText,
+  } = req?.body || {}
+
+
+  try {
+    // check if user the hiring manager and job posted exists
+    const user = await personalModel.findOne({
+      email: emailId
+    })
+
+    const job = await JobPostModel.findById(jobId)
+
+    // user not found
+    if (!user) {
+      throw new Error('hiring manager not found!')
+    }
+
+    // job not found
+    if (!job) {
+      throw new Error('job not found!')
+    }
+
+    // update the job status
+    job.status = statusText
+
+    // save 
+    await job.save()
+
+    // fetch all jobs of the hiring manager 
+    const allJobs = await JobPostModel.find({
+        my_email: emailId
+      })
+      .sort({
+        createdAt: -1
+      })
+      .limit(20);
+
+    // send the response back to the frontend. all jobs posted
+    // including the updated one to refresh the entire UI or client side
+    // consider redux mechanism of updating the affected job only.
+
+    res.status(200).send(allJobs)
+  } catch (error) {
+    // debug
+    console.log(error)
+
+    // send error response to the client
+    res.status(400).send(error?.message)
+  }
+
+}
+
+
+// update the entire job details
+export const handleUpdateEntireJobHiring = async (req, res) => {
+
+  try {
+    // extract userId passed in the params
+    const {
+      emailId,
+      jobId,
+    } = req?.params || {}
+
+
+    // extract the job object from the  body
+    const data = req?.body || {}
+
+    // check if user the hiring manager and job posted exists
+    const user = await personalModel.findOne({
+      email: emailId
+    })
+
+    const job = await JobPostModel.findById(jobId)
+
+    // user not found
+    if (!user) {
+      throw new Error('hiring manager not found!')
+    }
+
+    // job not found
+    if (!job) {
+      throw new Error('job not found!')
+    }
+
+    // it has no file in the body
+
+    // update the job
+    await JobPostModel.findByIdAndUpdate(jobId, {
+      ...data
+    })
+
+    // fetch all jobs sort them the latest first, send to the client, contains updated jobs
+    const allJobs = await JobPostModel.find({
+        my_email: emailId
+      })
+      .sort({
+        createdAt: -1
+      })
+      .limit(20);
+
+    // sending
+    res.status(200).send(allJobs)
+
+  } catch (error) {
+    // debug
+    console.log(error)
+
+    // send error response to the client
+    res.status(400).send(error?.message)
+  }
+}
+
+
+// download the cv of the user
+
+export const handleDownloadDocumentHiring = async (req, res) => {
+  // extract userId passed in the params
+  const {
+    emailId,
+    jobId
+  } = req?.params || {}
+
+  const {
+    cvName
+  } = req?.body || {}
+
+  try {
+    // check if user the hiring manager and job posted exists
+    const user = await personalModel.findOne({
+      email: emailId
+    })
+
+    const job = await JobPostModel.findById(jobId)
+
+    // user not found
+    if (!user) {
+      throw new Error('hiring manager not found!')
+    }
+
+    // job not found
+    if (!job) {
+      throw new Error('job not found!')
+    }
+
+    // supabase operation to get the signed url that lasts for 60 seconds
+    const {
+      data,
+      error
+    } = await SUPABASE.storage.from(SUPABASE_BUCKET).createSignedUrl(cvName, 60);
+    if (error) throw new Error(error);
+
+    // send the signed url back to the frontend
+    res.status(200).send(data.signedUrl);
+
+  } catch (error) {
+    // debug
+    console.log(error)
+
+    // send error response to the client
+    res.status(400).send(error?.message)
+  }
+}
+
+
+// handle delete my job application
+export const handleDeleteMyJobApplication=async(req,res)=>{
+
+    // extract userId passed in the params
+    const {
+      userId,
+      jobAppID
+    } = req?.params || {}
+  
+
+
+  try {
+   
+    // fetch an exact match in jobs applied by user model such that
+    // the userId =>applicantID and jobAppID =>jobID
+    const jobApplication=await JobsAppliedModel.findOne({
+      $and: [{
+        "applicant.applicantID": userId
+      }, {
+        jobID: jobAppID
+      }],
+    })
+    
+    // job not exist
+    if (!jobApplication) {
+      throw new Error("something went wrong, application not found!")
+    }
+
+    // extract the name of the cv from the jobApplication
+    const cvName=jobApplication.cvName
+
+     // Delete file from Supabase
+     const { error } = await SUPABASE.storage.from(SUPABASE_BUCKET).remove([cvName]);
+     if (error) throw new Error(error);
+
+    //  delete in mongodb the metadata
+    await JobsAppliedModel.findOneAndDelete({
+      $and: [{
+        "applicant.applicantID": userId
+      }, {
+        jobID: jobAppID
+      }],
+    })
+
+    // send the success response back to the frontend
+    res.status(200).send('delete successfully')
+    
+  } catch (error) {
+     // debug
+     console.log(error)
+
+     // send error response to the client
+     res.status(400).send(error?.message)
+  }
+
+
+}
+
+
 
 
 // handle getting of jobs applied by the user
@@ -272,7 +603,7 @@ export const handleGetMyJobStats = async (req, res) => {
 
       for (const element of jobsUserApplied) {
         if (main_job.id === element.jobID) {
-          // user applied the hob
+          // user applied the job
           main_job.currentUserApplied = true
           // their cv was viewed by the hiring team
           main_job.viewedCV = element.viewed
@@ -280,6 +611,9 @@ export const handleGetMyJobStats = async (req, res) => {
           main_job.cvLink = element.cvLink
           // date of application
           main_job.dateApplied = element.createdAt
+
+          // status from hr
+          main_job.status = element.status
 
           // return the job 
           return main_job
@@ -400,19 +734,12 @@ export const handleGetTopJobs = async (req, res) => {
     // sort them the latest first, exclude phone and email attached
     const latestJobs = await JobPostModel.find({}, {
         my_phone: 0,
-        my_email: 0
+        data_email: 0,
       })
       .sort({
         createdAt: -1
       })
       .limit(4);
-
-    // no jobs posted
-    if (!latestJobs) {
-      throw new Error(
-        "currently there are no selected jobs please check on this page later."
-      );
-    }
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.
@@ -446,6 +773,61 @@ export const handleGetTopJobs = async (req, res) => {
   }
 
 };
+
+
+// get all job feedback
+export const handleGetAllJobFeedBack = async (req, res) => {
+  // extract userId passed in the params
+  const {
+    userId
+  } = req?.params || {}
+
+  try {
+
+    // get job feedbacks from the db matching the target user
+    const jobFeedBacks = await JobFeedBackModal.find({
+      targetId: userId
+    })
+
+    // send the response to the frontend
+    res.status(200).send(jobFeedBacks)
+
+  } catch (error) {
+    // debug
+    console.log(error)
+    // send the error response to client
+    res.status(400).send(error.message);
+  }
+
+};
+
+
+// delete a job feedback
+export const handleDeleteJobFeedBack = async (req, res) => {
+
+  // extract the job feedback id from the params 
+  const {
+    feedId
+  } = req?.params || {}
+
+  try {
+
+    // delete by Id
+    await JobFeedBackModal.findByIdAndDelete(feedId)
+
+    // send the response
+    res.status(200).send('cleared successfully')
+
+  } catch (error) {
+    // debug
+    console.log(error)
+    // send the error response
+    res.status(400).send(error?.message)
+  }
+
+
+}
+
 
 // get verified jobs only
 export const handleGetVerifiedJobs = async (req, res) => {
@@ -736,9 +1118,6 @@ export const handleDeleteJobPost = async (req, res) => {
 
 // handle job application. cloud is supabase for CV and Cover letter
 export const handleJobApplication = async (req, res) => {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_KEY;
-  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     // extract the post object from the form data passed as body from frontend
@@ -760,28 +1139,24 @@ export const handleJobApplication = async (req, res) => {
         buffer
       } = file;
 
+      // cv file name with date preceding
+      const finalDocumentUploadedName = `${Date.now()}-${originalname}`
       // Upload to Supabase folder jobs
       const {
         data,
         error
-      } = await supabase.storage
-        .from(process.env.SUPABASE_BUCKET)
-        .upload(`jobs/${Date.now()}-${originalname}`, buffer, {
+      } = await SUPABASE.storage
+        .from(SUPABASE_BUCKET)
+        .upload(finalDocumentUploadedName, buffer, {
           cacheControl: "5000",
-          upsert: false,
+          upsert: true,
+          contentType:'application/pdf'
         });
 
       // error encountered during file upload
       if (error) {
         throw new Error(error.message);
       }
-      // getting the public URl for saving
-      // Extracting the public URL string for saving
-      const {
-        publicUrl
-      } = supabase.storage
-        .from(process.env.SUPABASE_BUCKET)
-        .getPublicUrl(data.path).data;
 
       // update the target job its respective applicants info.
       const jobTarget = await JobPostModel.findById({
@@ -820,7 +1195,7 @@ export const handleJobApplication = async (req, res) => {
       //save the application job request in the database
       await JobsAppliedModel.create({
         ...dataBody,
-        cvLink: publicUrl,
+        cvName: finalDocumentUploadedName,
       });
       res.status(200).send("application successful");
     } else {

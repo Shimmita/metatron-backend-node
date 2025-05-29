@@ -9,7 +9,7 @@ import {
 } from "../utils/cloudinary.js";
 // msg sent to frontend after successful registration
 const successMsg =
-  "Your account has been created successfully login to explore the world of IT";
+  "Your account has been created successfully pease login.";
 
 
 
@@ -45,7 +45,7 @@ const handleSignupPersonal = async (req, res) => {
       .collection(process.env.COLLECTION)
       .doc(uniqueUserID);
 
-    // Check if the user already exists in Firestore
+    // Check if the user already exists in Fire-store
     const userDoc = await userRef.get();
     if (userDoc.exists && Object.keys(userDoc.data()).length > 0) {
       console.log("user exists");
@@ -88,7 +88,7 @@ const handleSignupPersonal = async (req, res) => {
           "metatron/avatars"
         );
 
-        // getting vatar url and ID from the result of cloudinary upload
+        // getting avatar url and ID from the result of cloudinary upload
         const avatar = result.secure_url;
         const avatarID = result.public_id;
         user.avatar = avatar;
@@ -109,7 +109,7 @@ const handleSignupPersonal = async (req, res) => {
         });
       }
     } else {
-      // user neither has data in body request or in firestore, direct them to complete registration
+      // user neither has data in body request or in fire-store, direct them to complete registration
       return res.status(200).send({
         incomplete: true,
       });
@@ -121,7 +121,7 @@ const handleSignupPersonal = async (req, res) => {
 
     if (message.includes("Firebase ID token has expired.")) {
       message =
-        "Your access token has expired. Please sign in to continue with your request.";
+        "your access token has expired. please sign in.";
     } else {
       message = error.message;
     }
@@ -144,12 +144,12 @@ const handleSignupPersonalMongo = async (req, res) => {
 
     // check if the provided email is valid like acceptable email
     if (!validator.isEmail(email)) {
-      throw new Error("Provided email is  malformed!");
+      throw new Error("provided email is  malformed!");
     }
 
     // passwords must be atleast 6 characters
     if (password.length < 6) {
-      throw new Error("Password too short must be 6 characters minimum!");
+      throw new Error("password must be 6 characters minimum!");
     }
 
     // check if a user exists in the database based on email first which is unique
@@ -158,7 +158,7 @@ const handleSignupPersonalMongo = async (req, res) => {
     });
 
     if (userFetch) {
-      throw new Error("User already registered!");
+      throw new Error("user already registered!");
     }
 
     // using bcrypt to encrypt user password
@@ -222,12 +222,12 @@ const handleSigninPersonal = async (req, res) => {
   try {
     // check if the provided email is valid like acceptable email
     if (!validator.isEmail(email)) {
-      throw new Error("Provided email is malformed!");
+      throw new Error("provided email is malformed!");
     }
 
-    // passwords must be aleast 6 characters
+    // passwords must be at least 6 characters
     if (password.length < 6) {
-      throw new Error("password too short must be 6 characters minimum!");
+      throw new Error("password must be 6 characters minimum!");
     }
     const user = await PersonalModel.findOne({
       email
@@ -235,7 +235,7 @@ const handleSigninPersonal = async (req, res) => {
     // user does not exist
     if (!user) {
       throw new Error(
-        "user not found create new account to access our services!"
+        "create new account to access our services!"
       );
     }
 
@@ -266,7 +266,7 @@ const handleResetPassword = async (req, res) => {
   try {
     // check if the provided email is valid like acceptable email
     if (!validator.isEmail(email)) {
-      throw new Error("Provided email is malformed!");
+      throw new Error("provided email is malformed!");
     }
 
 
@@ -277,7 +277,7 @@ const handleResetPassword = async (req, res) => {
     // user does not exist
     if (!user) {
       throw new Error(
-        "user not found create new account to access our services!"
+        "create new account to access our services!"
       );
     }
 
@@ -313,7 +313,7 @@ const handleResetPassword = async (req, res) => {
 
   } catch (error) {
     // monitor the error
-    console.error('Failed to send email:', error);
+    console.error('failed to send email:', error);
     // send the error to the frontend
     res.status(400).json({
       message: error.message,

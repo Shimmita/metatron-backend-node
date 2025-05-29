@@ -1,5 +1,5 @@
 import app from "express";
-import { handleFetchAllMyNetwork } from "../controllers/manage_network_route.js";
+import { handleFetchAllMyNetwork } from "../controllers/manage_network_controller.js";
 
 const manageNetworkRoute = app.Router();
 

@@ -22,7 +22,7 @@ export const uploadToCloudinary = (buffer, folder) => {
       { folder, resource_type: "image", public_id: `${Date.now()}` },
       (error, result) => {
         if (error) {
-          return reject(error);
+          return reject(new Error(error));
         }
         resolve(result);
       }

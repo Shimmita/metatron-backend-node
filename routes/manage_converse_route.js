@@ -14,7 +14,7 @@ const manageConversationsRoute = app.Router();
 //create a conversation
 manageConversationsRoute.post("/users/create", handleCreateNewConversation);
 
-// send a message to an existing coversation
+// send a message to an existing conversation
 manageConversationsRoute.post(
   "/users/message/create",
   handleSendMessageToConversation

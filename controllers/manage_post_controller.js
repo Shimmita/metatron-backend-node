@@ -254,6 +254,10 @@ export const handlePostLiking = async (req, res) => {
       avatar: data.avatar,
       message: data.message,
       minimessage: data.minimessage,
+      country: data.country,
+      county: data.county
+
+
     };
 
     if (!post) {
@@ -354,6 +358,8 @@ export const handleGithubIncremental = async (req, res) => {
       avatar: data.avatar,
       message: data.message,
       minimessage: data.minimessage,
+      country: data.country,
+      county: data.county
     };
 
     if (!post) {

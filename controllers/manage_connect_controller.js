@@ -15,7 +15,7 @@ export const handleCreateNewConnectionRequest = async (req, res) => {
     const targetId = new mongoose.Types.ObjectId(data.targetId);
 
     // get current user details for validating they exist or not
-    var currentUserDetails = await personalModel.findById({
+    let currentUserDetails = await personalModel.findById({
       _id: senderId,
     });
 
@@ -35,7 +35,7 @@ export const handleCreateNewConnectionRequest = async (req, res) => {
       $and: [{ senderId }, { targetId }],
     });
 
-    // the current user previously initiated connect request and probly not yet resolved by target
+    // the current user previously initiated connect request and probably not yet resolved by target
     if (requestObject) {
       throw new Error("you have a previous pending request");
     }
@@ -47,12 +47,12 @@ export const handleCreateNewConnectionRequest = async (req, res) => {
 
     let friendsArrayTargetUser = targetUser.network;
 
-    // checking the existance of target userId in the friends of sender
+    // checking the existence of target userId in the friends of sender
     if (friendsArraySender.includes(targetId)) {
       throw new Error("You already friends!");
     }
 
-    // checking the existance of senderId in the friends of target user
+    // checking the existence of senderId in the friends of target user
     if (friendsArrayTargetUser.includes(senderId)) {
       throw new Error("You already friends!");
     }
@@ -90,33 +90,34 @@ export const handleAcceptPreviousConnectRequest = async (req, res) => {
     // check if the sender user is registered on the platform
     const senderUser = await personalModel.findById({ _id: senderUserID });
 
+    // sender no exists
     if (!senderUser) {
-      // sender not exist
       throw new Error("user not exist in the system!");
     }
 
     // check if the target user already registered in the system or not
     const targetUser = await personalModel.findById({ _id: targetUserID });
 
+    // user not registered
     if (!targetUser) {
-      // user not registered
       throw new Error("user not exist in the system!");
     }
 
     // fetch the target user networks and add the senderId if not exists
-    var targetUserNetwork = targetUser.network.map((friendID) => friendID);
-    var finalUpdatedNetworkTargetUser = [];
+    let targetUserNetwork = targetUser.network.map((friendID) => friendID);
+    let finalUpdatedNetworkTargetUser = [];
+
     // check is sender user exists in the network  of target or not
-    if (!targetUserNetwork.some((networkID) => networkID === senderUserID)) {
+    if (!targetUserNetwork.some((networkID) => networkID == senderUserID)) {
       finalUpdatedNetworkTargetUser = [senderUserID, ...targetUserNetwork];
     }
 
     // win win situation target accepts both increment their networks by 1.
     // fetch the sender network and check if targets exists or not and do the same for network add
-    // this time adding the target into the senders network and incremant senders network by 1
-    var senderUserNetwork = senderUser.network.map((friendID) => friendID);
-    var finalUpdatedNetworkSender = [];
-    if (!senderUserNetwork.some((networkID) => networkID === targetUserID)) {
+    // this time adding the target into the senders network and increment senders network by 1
+    let senderUserNetwork = senderUser.network.map((friendID) => friendID);
+    let finalUpdatedNetworkSender = [];
+    if (!senderUserNetwork.some((networkID) => networkID == targetUserID)) {
       finalUpdatedNetworkSender = [targetUserID, ...senderUserNetwork];
     }
 
@@ -164,7 +165,7 @@ export const handleRejectAcceptingConnectRequest = async (req, res) => {
       req?.params.connectRequestID
     );
 
-    // first checking if the connectrequest object exists or not
+    // first checking if the connect request object exists or not
     const connectRequest = await RequestConnectModel.findById({
       _id: connectRequestID,
     });
@@ -185,7 +186,7 @@ export const handleRejectAcceptingConnectRequest = async (req, res) => {
   }
 };
 
-// handle unfriending or disconneting a user from your network
+// handle unfriending or disconnecting a user from your network
 export const handleUnfriendConnection = async (req, res) => {
   try {
     // Extract sender and target IDs from params
@@ -248,7 +249,7 @@ export const handleGetAllConnectionRequest = async (req, res) => {
   }
 };
 
-// handle getting of top 10 users who aint friend to the currently userId
+// handle getting of top 10 users who ain't friend to the currently userId
 // in the network array
 export const handleGetTopUsersToConnect = async (req, res) => {
   try {
