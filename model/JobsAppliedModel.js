@@ -45,6 +45,13 @@ const jobAppliedSchema = new mongoose.Schema({
     required: false,
     default: false,
   },
+
+  isAvailable: {
+    type: Boolean,
+    required: false,
+    default: true,
+  },
+
   status: {
     type: String,
     required: false,

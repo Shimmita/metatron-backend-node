@@ -4,7 +4,7 @@ import multer from "multer";
 import {
   handleCreateJob,
   handleDeleteJobFeedBack,
-  handleDeleteJobPost,
+  handleDeleteJobPostHiring,
   handleDeleteMyJobApplication,
   handleDownloadDocumentHiring,
   handleGetAllJobFeedBack,
@@ -22,7 +22,7 @@ import {
   handleJobApplication,
   handleUpdateEntireJobHiring,
   handleUpdateJobApplicationStatusHiring,
-  handleUpdateJobStatusHiring,
+  handleUpdateJobStatusHiring
 } from "../controllers/manage_jobs_controller.js";
 // set up multer for file uploads cloudinary
 const uploadMulter = multer({ storage: multer.memoryStorage() });
@@ -72,9 +72,6 @@ manageJobsRouter.get("/all/verified/:userId", handleGetVerifiedJobs);
 // get specific job
 manageJobsRouter.get("/all/:id", handleGetSpecificJobPost);
 
-// delete job post
-manageJobsRouter.delete("/delete/:id", handleDeleteJobPost);
-
 // HIRING MANAGER
 
 //create jobs route
@@ -95,6 +92,8 @@ manageJobsRouter.put("/all/hiring/job/status/:emailId/:jobId", handleUpdateJobSt
 // updating the entire job post
 manageJobsRouter.put("/all/hiring/job/update/:emailId/:jobId", handleUpdateEntireJobHiring);
 
+// hr deleting a job they posted
+manageJobsRouter.delete("/all/hiring/job/delete/:emailId/:jobId", handleDeleteJobPostHiring);
 
 
 // USABLE TO ANY BOTH APPLICANT AND HR

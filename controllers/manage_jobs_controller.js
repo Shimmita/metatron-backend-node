@@ -9,7 +9,6 @@ import personalModel from "../model/personalModel.js";
 import {
   uploadToCloudinary
 } from "../utils/cloudinary.js";
-import mongoose from "mongoose";
 
 // supabase constants
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -235,7 +234,8 @@ export const handleUpdateJobApplicationStatusHiring = async (req, res) => {
     const user = await personalModel.findOne({
       email: emailId
     })
-    const job = await JobPostModel.findById(jobId)
+
+    const parentJob = await JobPostModel.findById(jobId)
 
     // user not found
     if (!user) {
@@ -243,7 +243,7 @@ export const handleUpdateJobApplicationStatusHiring = async (req, res) => {
     }
 
     // job not found
-    if (!job) {
+    if (!parentJob) {
       throw new Error('job not found!')
     }
 
@@ -257,7 +257,7 @@ export const handleUpdateJobApplicationStatusHiring = async (req, res) => {
       $and: [{
         targetId: applicantID
       }, {
-        title: job?.title
+        title: parentJob?.title
       }],
     })
 
@@ -267,17 +267,23 @@ export const handleUpdateJobApplicationStatusHiring = async (req, res) => {
     // update status tex
     jobToUpdate.status = statusText
 
+    // update the job assessed counter on the main job
+    parentJob.applicants.assessed = parentJob.applicants.assessed + 1
+
     // save the updated job
     await jobToUpdate.save()
+
+    // save the parent job changes
+    await parentJob.save()
 
     // create the job feedBack db if it does not exist for this target user and specific job title
     if (!jobFeedBackResult) {
       await JobFeedBackModal.create({
-        avatar: job?.logo || job?.logoID,
-        country: job?.location?.country,
-        state: job?.location.state,
-        name: job?.organisation?.name,
-        title: job?.title,
+        avatar: parentJob?.logo || parentJob?.logoID,
+        country: parentJob?.location?.country,
+        state: parentJob?.location.state,
+        name: parentJob?.organisation?.name,
+        title: parentJob?.title,
         targetId: applicantID,
       })
     }
@@ -418,6 +424,69 @@ export const handleUpdateEntireJobHiring = async (req, res) => {
   }
 }
 
+// delete the job of the user
+export const handleDeleteJobPostHiring = async (req, res) => {
+  // extract userId passed in the params
+  const {
+    emailId,
+    jobId
+  } = req?.params || {}
+
+  try {
+
+    // check if user the hiring manager and job posted exists
+    const user = await personalModel.findOne({
+      email: emailId
+    })
+
+    const job = await JobPostModel.findById(jobId)
+
+    // user not found
+    if (!user) {
+      throw new Error("hiring manager not found!")
+    }
+
+    // job not found
+    if (!job) {
+      throw new Error("job post not found!")
+    }
+
+
+    // loop in the jobsApplied model and locate those with the job Id
+    // and update that isAvailable to false
+    await JobsAppliedModel.updateMany({
+      jobID: jobId
+    }, {
+      isAvailable: false
+    })
+
+    // delete the job now
+    await JobPostModel.findByIdAndDelete(jobId)
+
+    // fetch all jobs posted by the hiring manager 
+    // sort them the latest first
+    const allJobs = await JobPostModel.find({
+      my_email: emailId
+    })
+    .sort({
+      createdAt: -1
+    })
+    .limit(20);
+
+
+    // send the status to the frontend
+    res.status(200).send(allJobs)
+
+  } catch (error) {
+
+    // debug
+    console.log(error)
+
+    // send error response to the client
+    res.status(400).send(error?.message)
+  }
+}
+
 
 // download the cv of the user
 
@@ -471,39 +540,41 @@ export const handleDownloadDocumentHiring = async (req, res) => {
 
 
 // handle delete my job application
-export const handleDeleteMyJobApplication=async(req,res)=>{
+export const handleDeleteMyJobApplication = async (req, res) => {
 
-    // extract userId passed in the params
-    const {
-      userId,
-      jobAppID
-    } = req?.params || {}
-  
+  // extract userId passed in the params
+  const {
+    userId,
+    jobAppID
+  } = req?.params || {}
+
 
 
   try {
-   
+
     // fetch an exact match in jobs applied by user model such that
     // the userId =>applicantID and jobAppID =>jobID
-    const jobApplication=await JobsAppliedModel.findOne({
+    const jobApplication = await JobsAppliedModel.findOne({
       $and: [{
         "applicant.applicantID": userId
       }, {
         jobID: jobAppID
       }],
     })
-    
+
     // job not exist
     if (!jobApplication) {
       throw new Error("something went wrong, application not found!")
     }
 
     // extract the name of the cv from the jobApplication
-    const cvName=jobApplication.cvName
+    const cvName = jobApplication.cvName
 
-     // Delete file from Supabase
-     const { error } = await SUPABASE.storage.from(SUPABASE_BUCKET).remove([cvName]);
-     if (error) throw new Error(error);
+    // Delete file from Supabase
+    const {
+      error
+    } = await SUPABASE.storage.from(SUPABASE_BUCKET).remove([cvName]);
+    if (error) throw new Error(error);
 
     //  delete in mongodb the metadata
     await JobsAppliedModel.findOneAndDelete({
@@ -515,14 +586,14 @@ export const handleDeleteMyJobApplication=async(req,res)=>{
     })
 
     // send the success response back to the frontend
-    res.status(200).send('delete successfully')
-    
-  } catch (error) {
-     // debug
-     console.log(error)
+    res.status(200).send('deleted successfully')
 
-     // send error response to the client
-     res.status(400).send(error?.message)
+  } catch (error) {
+    // debug
+    console.log(error)
+
+    // send error response to the client
+    res.status(400).send(error?.message)
   }
 
 
@@ -566,6 +637,7 @@ export const handleGetMyJobApplications = async (req, res) => {
       }
 
     })
+
 
     // jobs present
     res.status(200).send(appliedJobs);
@@ -1109,12 +1181,7 @@ export const handleGetSpecificJobPost = async (req, res) => {
   }
 };
 
-// delete the job post
-export const handleDeleteJobPost = async (req, res) => {
-  // get the req params value id of the post to be deleted
-  const id = req.params.id;
-  console.log(id);
-};
+
 
 // handle job application. cloud is supabase for CV and Cover letter
 export const handleJobApplication = async (req, res) => {
@@ -1150,7 +1217,7 @@ export const handleJobApplication = async (req, res) => {
         .upload(finalDocumentUploadedName, buffer, {
           cacheControl: "5000",
           upsert: true,
-          contentType:'application/pdf'
+          contentType: 'application/pdf'
         });
 
       // error encountered during file upload

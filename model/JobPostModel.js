@@ -143,6 +143,7 @@ const jobSchema = new mongoose.Schema({
       type: Number,
       default: 0,
     },
+  
     male: {
       type: Number,
       default: 0,
@@ -150,6 +151,10 @@ const jobSchema = new mongoose.Schema({
     female: {
       type: Number,
       default: 0,
+    },
+    assessed:{
+        type: Number,
+        default: 0,
     },
     other: {
       type: Number,

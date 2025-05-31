@@ -1,22 +1,32 @@
 // server/index.mjs
 
 import bodyParser from "body-parser";
-import { default as connectMongoStore } from "connect-mongodb-session";
+import {
+  default as connectMongoStore
+} from "connect-mongodb-session";
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
 import session from "express-session";
 import mongoose from "mongoose";
-import { handleAuthMiddleware } from "./middlewares/auth_middleware.js";
+import {
+  handleAuthMiddleware
+} from "./middlewares/auth_middleware.js";
 import authenticationRouter from "./routes/authentication_route.js";
 import manageChatAiRoute from "./routes/manage_chat_route.js";
 import manageConnectRequestRoute from "./routes/manage_connect_route.js";
 import manageConversationsRoute from "./routes/manage_converse_route.js";
-import { coursesManageRouter } from "./routes/manage_courses_route.js";
+import {
+  coursesManageRouter
+} from "./routes/manage_courses_route.js";
 import manageGlobalSearchRoute from "./routes/manage_global_search_route.js";
-import { manageJobsRouter } from "./routes/manage_jobs_route.js";
+import {
+  manageJobsRouter
+} from "./routes/manage_jobs_route.js";
 import manageNetworkRoute from "./routes/manage_network_route.js";
-import { postManageRouter } from "./routes/manage_post_route.js";
+import {
+  postManageRouter
+} from "./routes/manage_post_route.js";
 import manageUsersRoute from "./routes/manage_users_route.js";
 const mongoDBSession = connectMongoStore(session);
 const app = express();
@@ -52,7 +62,7 @@ const store = new mongoDBSession({
   collection: process.env.SESSION_STORE_NAME,
 });
 
-// session initialization
+// session initialization, session lasts 2 hrs
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -61,7 +71,7 @@ app.use(
     name: process.env.SESSION_NAME,
     store,
     cookie: {
-      maxAge: 60 * 60 * 1000,
+      maxAge: 60 * 60 * 2 * 1000,
     },
   })
 );
@@ -134,7 +144,9 @@ app.use(`${BASE_ROUTE}/valid`, (req, res) => {
 
 
 
-    res.status(200).send({ authorised: true });
+    res.status(200).send({
+      authorised: true
+    });
   } catch (error) {
     res.status(400).send(error.message);
   }
