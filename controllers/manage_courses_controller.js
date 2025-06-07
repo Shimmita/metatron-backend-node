@@ -2,7 +2,6 @@ import { v2 as cloudinary } from "cloudinary";
 import ffmpeg from "fluent-ffmpeg";
 import sharp from "sharp";
 import { Readable } from "stream";
-import CourseModel from "../model/CourseModel.js";
 import TechPostModal from "../model/TechPostModel.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 
@@ -55,68 +54,6 @@ export const handleCreateNewCourse = async (req, res) => {
           }
         },
       });
-
-      // process the video now using ffmpeg compressor
-      ffmpeg(inputStream)
-        .outputOptions(["-vcodec libx264", "-crf 28", "-preset fast"])
-        .format("mp4")
-        .on("data", (chunk) => outputChunks.push(chunk))
-        .on("end", async () => {
-          // upload video to cloudinary
-          const uploadResponse = await cloudinary.uploader.upload_stream(
-            { resource_type: "video", folder: "metatron/course/videos" },
-            async (err, result) => {
-              if (err) {
-                throw new Error("uploading the course video failed");
-              }
-
-              // extract the upload url and ID from the results and save it in a database
-              course_video_url = result.secure_url;
-              course_video_url_id = result.public_id;
-
-              // begin upload of the logo file
-              const logofile = files[1];
-              //Compress logo image and convert the image to AVIF format
-              const compressedImageBuffer = await sharp(logofile.buffer)
-                .resize({ width: 500 }) // Resize to a max width of 500px
-                .toFormat("avif", { quality: 70 }) // Convert to AVIF with 80% quality
-                .toBuffer();
-
-              // Upload the compressed AVIF image to Cloudinary
-              const result2 = await uploadToCloudinary(
-                compressedImageBuffer,
-                "metatron/course/logos"
-              );
-
-              // getting vatar url and ID from the result of cloudinary upload
-              course_logo_url = result2.secure_url;
-              course_logo_url_id = result2.public_id;
-
-              // finally  save the information to the database
-              await CourseModel.create({
-                ...data,
-                course_video_url,
-                course_video_url_id,
-                course_logo_url,
-                course_logo_url_id,
-              });
-
-              // send the response to the frontend
-              res
-                .status(200)
-                .send(
-                  "course uploaded successfully and awaits technical review from our officials. you will get notified once review is complete via email or inbox"
-                );
-            }
-          );
-
-          // piping the results
-          outputStream.pipe(uploadResponse);
-        })
-        .on("error", (err) => {
-          throw new Error("video compression failed:" + err);
-        })
-        .pipe(outputStream, { end: true });
     } else {
       // contains video and logo for the course
       // upload video to to cloud first
@@ -142,70 +79,10 @@ export const handleCreateNewCourse = async (req, res) => {
         },
       });
 
-      // process the video now using ffmpeg compressor
-      ffmpeg(inputStream)
-        .outputOptions(["-vcodec libx264", "-crf 28", "-preset fast"])
-        .format("mp4")
-        .on("codecData", (chunk) => outputChunks.push(chunk))
-        .on("end", async () => {
-          // upload video to cloudinary
-          const uploadResponse = await cloudinary.uploader.upload_stream(
-            { resource_type: "video", folder: "metatron/course/videos" },
-            async (err, result) => {
-              if (err) {
-                throw new Error("uploading the course video failed");
-              }
-
-              // extract the upload url and ID from the results and save it in a database
-              course_video_url = result.secure_url;
-              course_video_url_id = result.public_id;
-
-              // begin upload of the logo file
-              const logofile = files[1];
-              //Compress logo image and convert the image to AVIF format
-              const compressedImageBuffer = await sharp(logofile.buffer)
-                .resize({ width: 500 }) // Resize to a max width of 500px
-                .toFormat("avif", { quality: 70 }) // Convert to AVIF with 80% quality
-                .toBuffer();
-
-              // Upload the compressed AVIF image to Cloudinary
-              const result2 = await uploadToCloudinary(
-                compressedImageBuffer,
-                "metatron/course/logos"
-              );
-
-              // getting vatar url and ID from the result of cloudinary upload
-              course_logo_url = result2.secure_url;
-              course_logo_url_id = result2.public_id;
-
-              // finally  save the information to the database
-              await CourseModel.create({
-                ...data,
-                course_video_url,
-                course_video_url_id,
-                course_logo_url,
-                course_logo_url_id,
-              });
-
-              // send the response to the frontend
-              res
-                .status(200)
-                .send(
-                  "course uploaded successfully and awaits technical review from our officials. you will get notified once review is complete via email or inbox"
-                );
-            }
-          );
-
-          // piping the results
-          outputStream.pipe(uploadResponse);
-        })
-        .on("error", (err) => {
-          throw new Error("video compression failed:" + err);
-        })
-        .pipe(outputStream, { end: true });
+      
     }
   } catch (error) {
-    var message = `${error.message}`;
+    let message = `${error.message}`;
     if (message.toLowerCase().includes("cloudinary")) {
       message = "please check your internet connection";
     } else {

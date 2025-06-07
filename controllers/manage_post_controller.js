@@ -11,6 +11,7 @@ import {
 } from "../model/TechPostModel.js";
 import TechPostRepliesModel from "../model/TechPostRepliesModel.js";
 import {
+  deleteFromCloudinary,
   uploadToCloudinary
 } from "../utils/cloudinary.js";
 // creating of new post
@@ -212,8 +213,21 @@ export const handleDeleteUserPost = async (req, res) => {
   try {
     // checking if user present based on the params id
     const user = await personalModel.findById(userId);
+    // check post present
+    const post = await TechPostModel.findById(postId)
+
     if (!user) {
       throw new Error("user does not exist");
+    }
+
+    if (!post) {
+      throw new Error("post does not exist")
+    }
+
+    // check if the post contains post_url_id means 
+    // image is in cloudinary so delete it first
+    if (post.post_url_id?.length > 1) {
+      await deleteFromCloudinary(post.post_url_id)
     }
 
     // proceed deletion of the post
@@ -410,13 +424,9 @@ export const handleGithubIncremental = async (req, res) => {
 
 // update post comment on the post and also reflect on notification
 export const handlePostCommentsCreate = async (req, res) => {
+  // extract the data from request body
+  const data = req?.body;
   try {
-    const data = req?.body;
-    // searching for post best on the postID passed
-    const post = await TechPostModel.findById({
-      _id: data.postId
-    });
-
     // saved in the post itself user comments, contains full comment
     const commentToSave = {
       userId: data.userId,
@@ -434,6 +444,8 @@ export const handlePostCommentsCreate = async (req, res) => {
       ownerId: data.ownerId,
       userId: data.userId,
       name: data.name,
+      country: data.country,
+      county: data.county,
       comments: 0,
       likes: 0,
       github: 0,
@@ -445,9 +457,17 @@ export const handlePostCommentsCreate = async (req, res) => {
       } — " ${data.minimessage?.substring(0, 25)}..."`,
     };
 
+
+    // searching for post best on the postID passed
+    const post = await TechPostModel.findById({
+      _id: data.postId
+    });
+
+
     if (!post) {
       throw new Error("post not found!");
     }
+
 
     // increment comment counts
     post.post_comments.count = post.post_comments.count + 1;
@@ -487,8 +507,12 @@ export const handlePostCommentsCreate = async (req, res) => {
 
     // resave the tech post with the latest updates
   } catch (error) {
+
+    // debug
+    console.log(error);
+
+    // send error to the frontend
     res.status(400).send("something went wrong");
-    console.log(error.message);
   }
 };
 
