@@ -62,7 +62,7 @@ const store = new mongoDBSession({
   collection: process.env.SESSION_STORE_NAME,
 });
 
-// session initialization, session lasts 2 hrs
+// session initialization, session lasts 3 hrs
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -71,7 +71,7 @@ app.use(
     name: process.env.SESSION_NAME,
     store,
     cookie: {
-      maxAge: 60 * 60 * 2 * 1000,
+      maxAge: 60 * 60 * 3 * 1000,
     },
   })
 );

@@ -147,7 +147,7 @@ const handleSignupPersonalMongo = async (req, res) => {
       throw new Error("provided email is  malformed!");
     }
 
-    // passwords must be atleast 6 characters
+    // passwords must be at least 6 characters
     if (password.length < 6) {
       throw new Error("password must be 6 characters minimum!");
     }

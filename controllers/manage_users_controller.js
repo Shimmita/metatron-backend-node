@@ -1,6 +1,15 @@
+import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import personalModel from "../model/personalModel.js";
 import ProfileViewerModel from "../model/ProfileViewerModel.js";
+import TechPostModel from "../model/TechPostModel.js";
+import {
+  uploadToCloudinary
+} from "../utils/cloudinary.js";
+import {
+  CompressImageFunction
+} from "../utils/compressImage.js";
+
 
 // controls sending the request to the deployed Ai model for response
 export const handleGetSpecificUser = async (req, res) => {
@@ -42,6 +51,9 @@ export const handleGetSpecificUser = async (req, res) => {
       email: 1,
       phone: 1,
       about: 1,
+      linkedin: 1,
+      portfolio: 1,
+      gitHub: 1
     });
 
     // no user
@@ -230,6 +242,7 @@ export const handleDeleteProfileView = async (req, res) => {
 // handle updating of the user
 export const handleUserUpdateDetails = async (req, res) => {
   try {
+    let newHashedPassword = ''
     // const userID from params
     const userID = req?.params.id;
     // Parse the user object from the request body
@@ -242,36 +255,42 @@ export const handleUserUpdateDetails = async (req, res) => {
       phone,
       country,
       county,
+      gitHub,
+      portfolio,
+      linkedin,
+      oldPassword,
+      newPassword
     } = userDetails;
 
-    // user and iD present lets check user
+    // user present lets check user
     const user = await personalModel.findById(userID);
+
 
     // user not available
     if (!user) {
       throw new Error("user does not exist");
     }
 
-    // compare the details if they same leave else update.
+    // extract the password
     const {
-      about: userAbout,
-      selectedSkills: userSkills,
-      specialisationTitle: userSpecialisation,
-      phone: userPhone,
-      country: userCountry,
-      county: userCounty,
+      password: userPassword
     } = user;
 
-    // update only changes
-    if (
-      userAbout === about &&
-      specialisationTitle === userSpecialisation &&
-      phone === userPhone &&
-      country === userCountry &&
-      county === userCounty &&
-      selectedSkills.join() === userSkills.join()
-    ) {
-      throw new Error("no changes to update");
+
+    // password passed from the client
+    if (oldPassword?.length > 5 && newPassword?.length > 5) {
+
+      // check if old and user current passwords match
+      if (await bcrypt.compare(oldPassword, userPassword)) {
+        //hash the new password being passed
+        newHashedPassword = await bcrypt.hash(newPassword, 10)
+        // update the user password
+        user.password = newHashedPassword
+      } else {
+        // error incorrect passwords
+        throw new Error("provided incorrect password!")
+      }
+
     }
 
     // update the details that contains any changes
@@ -280,24 +299,136 @@ export const handleUserUpdateDetails = async (req, res) => {
     user.phone = phone;
     user.country = country;
     user.county = county;
+    user.linkedin = linkedin;
+    user.gitHub = gitHub;
+    user.portfolio = portfolio;
     user.selectedSkills = selectedSkills;
 
     // if no file save the data directly to the database
     if (!req.file) {
-      await user.save();
-    }
 
-    // send the response to the frontend
-    res
-      .status(200)
-      .send({
+      // update user posts details to reflect changes
+      // no user avatar to update since file not present
+      await updateUserPosts(userID, '')
+
+      // save the updated user changes
+      await user.save();
+
+      // update user posts details to reflect changes
+      // avatar updated
+      await updateUserPosts(userID, user)
+
+      // send the response to the frontend
+      res.status(200).send({
         message: "changes updated successfully",
         data: user
       });
+    } else {
+
+      // Compress and convert the image to AVIF format
+      const compressedImageBuffer = await CompressImageFunction(req.file.buffer)
+
+      // Upload the compressed AVIF image to Cloudinary
+      const result = await uploadToCloudinary(
+        compressedImageBuffer,
+        process.env.CLOUDINARY_POST_IMAGES_FOLDER
+      );
+
+      // getting  avatar url and ID from the result of cloudinary upload
+
+      const avatar = result.secure_url;
+      const avatarID = result.public_id;
+
+      // update the user avatar and avatarID.
+      user.avatar = avatar
+      user.avatarID = avatarID
+
+      // save the details
+      await user.save()
+
+      // update user posts details to reflect changes
+      // avatar updated
+      await updateUserPosts(userID, user)
+
+      // return the success response to the frontend
+      res.status(200).send({
+        message: "changes updated successfully",
+        data: user
+      });
+    }
+
+
   } catch (error) {
+    const errorMessage = error.message
     // debug
-    console.log(error.message);
-    // send error message to the frontend
-    res.status(400).send(error.message);
+    console.log(errorMessage);
+    if (errorMessage.includes("api.cloudinary.com")) {
+      // send error message to the frontend
+      res.status(400).send('check your internet connection!');
+    } else {
+      // send error message to the frontend
+      res.status(400).send('something went wrong!');
+    }
+
   }
 };
+
+
+// updates any user posts data
+const updateUserPosts = async (userId, user) => {
+  if (!user) {
+    return
+  }
+
+  // user specific post data
+  const userPosts = await TechPostModel.find({
+    'post_owner.ownerId': userId
+  })
+
+  // user has post(s)
+  if (userPosts) {
+
+    //  update these user post attributes
+    // owner title,avatar,skills | post location (country and states) | post comment and replies
+    for (const element of userPosts) {
+
+      // current post to update
+      await TechPostModel.findByIdAndUpdate(element.id, {
+        'post_owner.owneravatar': user?.avatar,
+        'post_owner.ownertitle': user?.specialisationTitle,
+        'post_owner.ownerskills': user?.selectedSkills,
+        'post_location.country': user?.country,
+        'post_location.state': user?.county
+
+      })
+    }
+  }
+
+  // all posts so that could update any of user's comments details
+  const allPosts = await TechPostModel.find({})
+  // post present
+  if (allPosts) {
+    // loop through each post
+    for (const post of allPosts) {
+      // current post
+      const currentPost = await TechPostModel.findById(post.id)
+      // get all user comments
+      const userComments = currentPost.post_comments.comments.filter(comment => comment.userId === userId)
+      // loop through the array of comments and updating user details     
+      for (const comment of userComments) {
+        comment.title = user?.specialisationTitle
+        comment.country = user?.country
+        comment.avatar = user?.avatar
+      }
+      // update the user comments and outdo the previously user comments
+      currentPost.post_comments.comments = [...userComments, ...currentPost.post_comments.comments.filter(comment => comment.userId !== userId)]
+      // save the post
+      await currentPost.save()
+    }
+  }
+
+
+
+
+
+}

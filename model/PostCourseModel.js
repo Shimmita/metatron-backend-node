@@ -40,9 +40,9 @@ const instructorDetails = new mongoose.Schema({
     default: ""
   },
 
-  instructorSkills:{
-    type:[String],
-    required:[true,'instructor skills required'],
+  instructorSkills: {
+    type: [String],
+    required: [true, 'instructor skills required'],
   },
 
   instructorGitHub: {
@@ -66,31 +66,62 @@ const instructorDetails = new mongoose.Schema({
     trim: true,
     default: ""
   },
- 
-  _id: false, //prevent id generation
+
+  //prevent id generation
+  _id: false,
 });
+
+// video schema
+const videoSchema = new mongoose.Schema({
+  video_lecture_link: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  video_lectureID: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+
+  //prevent id generation
+  _id: false,
+})
 
 
 // main schema
 const courseModel = new mongoose.Schema({
-  course_instructor:instructorDetails,
+  course_instructor: instructorDetails,
   course_title: {
     type: String,
     required: true,
     trim: true
   },
-  course_video_url: {
-    type: String,
+  course_video_lectures: [videoSchema],
+  course_video_topics:{
+    type: [String],
     trim: true,
-    required: false,
-    default: ""
+    required: true,
+    default: []
   },
-  
-  course_logo_url:{
-    type: String,
-    trim: true,
-    required: false,
-    default: ""
+  course_logo: {
+    logoLink: {
+      type: String,
+      trim: true,
+      required: true,
+      default: ""
+    },
+    logoID: {
+      type: String,
+      trim: true,
+      required: false,
+      default: ""
+    },
+
+    // false id generation
+    _id: false,
   },
 
   course_description: {
@@ -129,13 +160,6 @@ const courseModel = new mongoose.Schema({
     },
     _id: false,
   },
-
-  course_topics:{
-    type:[String],
-    required:true,
-    default:[]
-  },
-
 
   course_edited: {
     type: Boolean,

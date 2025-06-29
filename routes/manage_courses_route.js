@@ -9,14 +9,13 @@ import {
 
 // Set up multer for file uploads
 const uploadMulter = multer({ storage: multer.memoryStorage() });
-const MAX_FILE_UPLOAD=2
 
 export const coursesManageRouter = express.Router();
 
 //create post route
 coursesManageRouter.post(
   "/create",
-  uploadMulter.array("file",MAX_FILE_UPLOAD),
+  uploadMulter.fields([{name:'videos'},{name:'image'}]),
   handleCreateNewCourse
 );
 

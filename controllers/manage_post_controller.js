@@ -1,4 +1,3 @@
-import sharp from "sharp";
 import personalModel from "../model/personalModel.js";
 import {
   default as PostReactionModal,
@@ -14,6 +13,7 @@ import {
   deleteFromCloudinary,
   uploadToCloudinary
 } from "../utils/cloudinary.js";
+import { CompressImageFunction } from "../utils/compressImage.js";
 // creating of new post
 export const handleCreateNewPost = async (req, res) => {
   try {
@@ -23,24 +23,18 @@ export const handleCreateNewPost = async (req, res) => {
     //   check if user has file
     if (req?.file) {
       // Compress and convert the image to AVIF format
-      const compressedImageBuffer = await sharp(req.file.buffer)
-        .resize({
-          width: 500
-        }) // Resize to a max width of 500px
-        .toFormat("avif", {
-          quality: 80
-        }) // Convert to AVIF with 80% quality
-        .toBuffer();
-
+      const compressedImageBuffer = await CompressImageFunction(req.file.buffer)
+        
       // Upload the compressed AVIF image to Cloudinary
       const result = await uploadToCloudinary(
         compressedImageBuffer,
-        "metatron/post"
+        process.env.CLOUDINARY_POST_IMAGES_FOLDER
       );
 
       // getting avatar url and ID from the result of cloudinary upload
       const post_url = result.secure_url;
       const post_url_id = result.public_id;
+      
       await TechPostModal.create({
         ...data,
         post_url,

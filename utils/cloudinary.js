@@ -16,7 +16,7 @@ cloudinary.config({
  */
 
 // upload image to cloudinary
-export const uploadToCloudinary = (buffer, folder) => {
+export const uploadToCloudinary = (buffer, folder, type="image") => {
   return new Promise(async (resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder, resource_type: "image", public_id: `${Date.now()}` },
@@ -37,7 +37,29 @@ export const uploadToCloudinary = (buffer, folder) => {
   });
 };
 
-// delete from cloudinary
+
+// upload video to cloudinary
+export const uploadVideoToCloudinary = (buffer, filename,folder) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder,resource_type: 'video', public_id: `videos/${Date.now()}_${filename}` },
+      (error, result) => {
+        if (error) reject(new Error(error));
+        else resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
+};
+
+
+// delete video from cloudinary
+export const deleteVideoFromCloudinary = (publicId) => {
+  return cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+};
+
+
+// delete image from cloudinary
 export const deleteFromCloudinary = (publicId) => {
   return new Promise((resolve, reject) => {
     cloudinary.uploader.destroy(publicId, (error, result) => {
