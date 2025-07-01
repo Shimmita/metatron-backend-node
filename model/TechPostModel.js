@@ -64,6 +64,10 @@ const commentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  county: {
+    type: String,
+    required: true
+  },
   avatar: {
     type: String,
     required: false,

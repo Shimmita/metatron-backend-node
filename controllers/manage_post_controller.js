@@ -429,6 +429,7 @@ export const handlePostCommentsCreate = async (req, res) => {
       avatar: data.avatar,
       minimessage: data.minimessage,
       country: data.country,
+      county:data.county
     };
 
     // saved in the notification collection, contains truncate comment

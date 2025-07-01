@@ -6,8 +6,10 @@
         "minimessage",
         "organisation",
         "owneravatar",
+        "ownername",
         "ownerskills",
         "ownertitle",
+        "ownerverified",
         "specialisation",
         "supabase"
     ]
