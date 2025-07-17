@@ -204,6 +204,13 @@ const postSchema = new mongoose.Schema({
     comments: [commentSchema],
     _id: false,
   },
+  
+  favorite_count: {
+      type: Number,
+      required: false,
+      default: 0
+  },
+
 }, {
   timestamps: true
 });

@@ -1,6 +1,9 @@
 {
     "cSpell.words": [
+        "authorised",
+        "BREVO",
         "Convesations",
+        "hashedpass",
         "jobtypeaccess",
         "metatron",
         "minimessage",
@@ -12,5 +15,6 @@
         "ownerverified",
         "specialisation",
         "supabase"
-    ]
+    ],
+    "compile-hero.disable-compile-files-on-did-save-code": false
 }

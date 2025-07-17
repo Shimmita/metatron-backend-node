@@ -16,7 +16,7 @@ const uploadMulter = multer({
   storage: multer.memoryStorage()
 });
 
-// for getting all the profile views of the specific user
+// getting all the profile views of the specific user
 manageUsersRoute.get("/all/profile_views/:userId", handleGettingProfileViews);
 
 // delete or clear a profile view

@@ -3,7 +3,7 @@ export function handleAuthMiddleware(req, res, next) {
     // continue with the request
     next();
   } else {
-    // user session expired
-    res.status(400).send({ login: true, message: "user session expired" });
+    // halt the request, user session expired, need to login
+    res.status(400).send({ login: true, message: "user session expired!" });
   }
 }

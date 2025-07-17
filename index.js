@@ -28,6 +28,7 @@ import {
   postManageRouter
 } from "./routes/manage_post_route.js";
 import manageUsersRoute from "./routes/manage_users_route.js";
+import { eventsManageRouter } from "./routes/manage_events_route.js";
 const mongoDBSession = connectMongoStore(session);
 const app = express();
 app.use(bodyParser.json());
@@ -99,6 +100,9 @@ app.use(
 //jobs route
 app.use(`${BASE_ROUTE}/jobs`, handleAuthMiddleware, manageJobsRouter);
 
+// events route
+app.use(`${BASE_ROUTE}/events`, handleAuthMiddleware, eventsManageRouter);
+
 // chat route
 app.use(`${BASE_ROUTE}/chats`, handleAuthMiddleware, manageChatAiRoute);
 
@@ -141,8 +145,6 @@ app.use(`${BASE_ROUTE}/valid`, (req, res) => {
     if (!isOnline) {
       throw new Error("Hey there, welcome");
     }
-
-
 
     res.status(200).send({
       authorised: true

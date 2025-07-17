@@ -20,7 +20,7 @@ export const handleGetGlobalSearchResults = async (req, res) => {
     // Case-insensitive text search
     const regex = new RegExp(searchTerm, "i");
 
-    //Querry for  Searching Users
+    //Query for  Searching Users
     const usersQuery = {
       $or: [
         // Match name
@@ -43,7 +43,7 @@ export const handleGetGlobalSearchResults = async (req, res) => {
       $or: [
         // match job title
         { title: regex },
-        // match skilss in job title
+        // match skills in job title
         { skills: { $in: [regex] } },
       ],
     };

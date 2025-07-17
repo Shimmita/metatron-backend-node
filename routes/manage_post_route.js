@@ -3,9 +3,12 @@ import multer from "multer";
 import {
   handleCreateNewPost,
   handleDeleteCommentReply,
+  handleDeleteFavoritePost,
   handleDeletePostReaction,
   handleDeleteUserComment,
   handleDeleteUserPost,
+  handleGetAllFavoritePosts,
+  handleGetAllFilteredPosts,
   handleGetAllPostReportUser,
   handleGetAllPostsReactions,
   handleGetAllPostsUserSpecific,
@@ -15,6 +18,7 @@ import {
   handleGetTopPosts,
   handleGithubIncremental,
   handlePostCommentsCreate,
+  handlePostFavoriteCreate,
   handlePostLiking,
   handlePostReportedDelete,
   handleReplyComment,
@@ -38,8 +42,11 @@ postManageRouter.post(
   handleCreateNewPost
 );
 
-// getAllPost
+// getAllPost default
 postManageRouter.get("/all", handleGetAllTechiePost);
+
+// get All Posts, specifically filtered results
+postManageRouter.post("/all", handleGetAllFilteredPosts);
 
 // get top posts
 postManageRouter.get("/top", handleGetTopPosts);
@@ -64,6 +71,15 @@ postManageRouter.put("/update/github", handleGithubIncremental);
 
 // update post comments, post entangled and notification delete-able
 postManageRouter.put("/update/comments", handlePostCommentsCreate);
+
+// update post favorite 
+postManageRouter.put("/update/favorite", handlePostFavoriteCreate);
+
+// get all favorite posts of the user
+postManageRouter.get("/favorite/all/:userId", handleGetAllFavoritePosts);
+
+// delete favorite post
+postManageRouter.delete("/favorite/delete/:userId/:postId", handleDeleteFavoritePost);
 
 // send reply to a comment
 postManageRouter.post("/reply/comments", handleReplyComment)

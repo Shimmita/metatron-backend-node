@@ -7,6 +7,11 @@ const userSchema = new mongoose.Schema(
       required: [true, "Name is required"],
       trim: true,
     },
+    email_verified:{
+      type:Boolean,
+      required:false,
+      default:false
+    },
     avatar: {
       type: String,
       required: false,
@@ -44,11 +49,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Education level is required"],
       enum: {
-        values: [  "Secondary School",
-  "Diploma Certificate",
-  "Bachelors Degree",
-  "Masters Degree",
-  "Doctorate Degree"],
+        values: [  
+      "Secondary School",
+      "Diploma Certificate",
+      "Bachelors Degree",
+      "Masters Degree",
+      "Doctorate Degree"
+               ],
         message:
           "Invalid education level, should be Diploma, Bachelors, Masters or PhD",
       },

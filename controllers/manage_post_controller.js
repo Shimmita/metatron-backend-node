@@ -1,4 +1,5 @@
 import personalModel from "../model/personalModel.js";
+import PostFavorites from "../model/PostFavorites.js";
 import {
   default as PostReactionModal,
   default as PostReactionModel,
@@ -13,7 +14,9 @@ import {
   deleteFromCloudinary,
   uploadToCloudinary
 } from "../utils/cloudinary.js";
-import { CompressImageFunction } from "../utils/compressImage.js";
+import {
+  CompressImageFunction
+} from "../utils/compressImage.js";
 // creating of new post
 export const handleCreateNewPost = async (req, res) => {
   try {
@@ -24,7 +27,7 @@ export const handleCreateNewPost = async (req, res) => {
     if (req?.file) {
       // Compress and convert the image to AVIF format
       const compressedImageBuffer = await CompressImageFunction(req.file.buffer)
-        
+
       // Upload the compressed AVIF image to Cloudinary
       const result = await uploadToCloudinary(
         compressedImageBuffer,
@@ -34,7 +37,7 @@ export const handleCreateNewPost = async (req, res) => {
       // getting avatar url and ID from the result of cloudinary upload
       const post_url = result.secure_url;
       const post_url_id = result.public_id;
-      
+
       await TechPostModal.create({
         ...data,
         post_url,
@@ -96,19 +99,20 @@ export const handleUpdatingOfPost = async (req, res) => {
 
 // get all posts
 export const handleGetAllTechiePost = async (req, res) => {
+
   try {
+    // extracting the query params from the frontend
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     // retrieve all posts in order of latest first
     const allPosts = await TechPostModal.find({})
       .sort({
         createdAt: -1
       })
-      .limit(20);
-    // posts not made its empty
-    if (allPosts.length < 1) {
-      throw new Error(
-        "currently there are no posts made by the users on the platform kindly try again later."
-      );
-    }
+      .skip(skip)
+      .limit(limit);
 
     // posts are present
     res.status(200).send(allPosts);
@@ -116,6 +120,58 @@ export const handleGetAllTechiePost = async (req, res) => {
     res.status(400).send(error.message);
   }
 };
+
+
+// get all posts for filtered results, array options will be passed in body
+export const handleGetAllFilteredPosts=async(req,res)=>{
+
+  try {
+      const filterArray=req.body || []
+      // the data in request body should be in the format of an array
+      if (!Array.isArray(filterArray)) {
+        throw new Error('send an array of names!')
+      }
+
+    // Initialize query
+    const query = {
+      $and: []
+    };
+
+     // handle job_skill-set search
+    if (filterArray.length > 0) {
+      query.$and.push({
+        $or: [
+          ...filterArray.map((term) => ({
+            'post_category.main': {
+              $regex: term,
+              $options: "i"
+            },
+          })),
+        ],
+      });
+    }
+
+     //fetch filtered posts from the database latest first, limit 20
+    //  implement strategy to handle scenarios where data is over 20;pagination
+      const filteredPostResults = await TechPostModel.find(query).sort({
+          createdAt: -1,
+      }).limit(20);
+
+      // if no results send an error of empty
+      if (!filteredPostResults) {
+        throw new Error("no matching results!")
+      }
+
+    // send response back to the client
+    res.status(200).send(filteredPostResults)    
+  } catch (error) {
+    // debug
+    console.log(error.message)
+    // send error to the backend
+    res.status(400).send(error.message)
+  }
+
+}
 
 // get top 3 posts
 export const handleGetTopPosts = async (req, res) => {
@@ -429,7 +485,7 @@ export const handlePostCommentsCreate = async (req, res) => {
       avatar: data.avatar,
       minimessage: data.minimessage,
       country: data.country,
-      county:data.county
+      county: data.county
     };
 
     // saved in the notification collection, contains truncate comment
@@ -702,16 +758,138 @@ export const handleUpdateEditCommentReply = async (req, res) => {
   }
 }
 
+// handle the update of post favorites
+export const handlePostFavoriteCreate = async (req, res) => {
+  try {
+
+    const favoriteObject = req?.body || {}
+
+    // destructuring
+    const {
+      postId,
+      userFavoriteId
+    } = favoriteObject
+
+    // check if the user and the post really exist
+    const post = await TechPostModal.findById(postId)
+    const user = await personalModel.findById(userFavoriteId)
+
+    // check if the post already exist using userId and postId
+    const favorite = await PostFavorites.findOne({
+      $and: [{
+        postId
+      }, {
+        userFavoriteId
+      }],
+    })
+
+    // reject request user or post doesn't exist
+    if (!post || !user) {
+      throw new Error('Failed to Add')
+    }
+
+    // reject request this post has already been added to favorite by the user
+    if (favorite) {
+      throw new Error('already added!')
+    }
+
+    // save into the database
+    await PostFavorites.create(favoriteObject)
+
+    // update the post favorites counter
+    post.favorite_count = post.favorite_count + 1
+
+    // save the updated post
+    await post.save()
+
+    // send success response
+    res.status(200).send('added successfully')
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+}
+
+// get all user favorite posts
+export const handleGetAllFavoritePosts = async (req, res) => {
+  try {
+    let allFavoritePosts=[]
+    // extract details from the params
+    const {
+      userId
+    } = req?.params || {}
+
+    // check if user exists
+    const user=await personalModel.findById(userId)
+
+    // user not exist
+    if (!user) {
+      throw new Error('user not found!')
+    }
+
+    // pagination related
+    // extracting the query params from the frontend
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    
+    // fetch all the favorite postIds in the favorites database collection
+    // const favoritePostIds=await PostFavorites.find({userFavoriteId:userId},{postId:1}).skip(skip).limit(limit)
+    const favoritePostIds=await PostFavorites.find({userFavoriteId:userId},{postId:1})
+
+    // fetch in the tech post modals all the respective postIds
+    for (const favoritePost of favoritePostIds) {
+      // fetching the posts
+      const post=await TechPostModal.findById(favoritePost.postId)
+      // appending the posts
+      allFavoritePosts=[...allFavoritePosts,post]
+    }
+
+    // send the response back to the frontend
+    res.status(200).send(allFavoritePosts)
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+}
+
+// handle deletion of favorite post
+export const handleDeleteFavoritePost=async(req,res)=>{
+  try {
+     // extract details from the params
+    const {postId,userId:userFavoriteId} = req?.params || {}
+
+    // delete the posts
+    await PostFavorites.findOneAndDelete({
+      $and: [{
+        postId
+      }, {
+        userFavoriteId
+      }],
+    }
+    )
+
+    // send success response
+    res.status(200).send('removed successfully')
+    
+  } catch (error) {
+    console.log(error)
+    res.status(400).send(error?.message)
+  }
+}
+
 
 // delete a comment reply
 export const handleDeleteCommentReply = async (req, res) => {
-  // extract details from the params
-  const {
-    userId,
-    commentId,
-  } = req?.params || {}
 
   try {
+    // extract details from the params
+    const {
+      userId,
+      commentId,
+    } = req?.params || {}
+
 
     // check exists user and comment
     const user = await personalModel.findById(userId)

@@ -1,17 +1,19 @@
 import bcrypt from "bcrypt";
 import admin from "firebase-admin";
+import nodemailer from 'nodemailer';
 import sharp from "sharp";
 import validator from "validator";
-import PersonalModel from "../model/personalModel.js";
+import EmailVerificationSchema from "../model/EmailVerificationModel.js";
+import { default as PersonalModel, default as personalModel } from "../model/personalModel.js";
 import ResetCodeModal from "../model/ResetCodeModal.js";
 import {
   uploadToCloudinary
 } from "../utils/cloudinary.js";
+import { generateResetCode } from "../utils/codeGenerator.js";
+
 // msg sent to frontend after successful registration
 const successMsg =
   "Your account has been created successfully pease login.";
-
-
 
 
 const handleSignupPersonal = async (req, res) => {
@@ -241,78 +243,358 @@ const handleSigninPersonal = async (req, res) => {
 
     // user exists lets check the password provided against the one in the database
     if (await bcrypt.compare(password, user.password)) {
-      // add the session user isOnline to true on every request that expires based on session time
+      // check if user verified their email address or not and respond accordingly
+      if (user.email_verified) {
+         // add the session user isOnline to true on every request that expires based on session time
       req.session.isOnline = true;
       // add the userId in the session will be used to check if they online or not based on session data
       req.session.userID = user._id;
       res.status(200).send(user);
+      }else{
+      // check for email verification records in the db, if exist then use the email_code and no generations
+      const emailVerificationRecords=await EmailVerificationSchema.findOne({email})
+
+      let tempCode="77388"
+
+      if (emailVerificationRecords) {
+        tempCode=emailVerificationRecords.email_code
+      }else{
+        tempCode=generateResetCode()
+      }
+
+        const htmlContent=`<html>
+            <head>
+              <meta charset="utf-8">
+              <title>Email Verification</title>
+              <style>
+                body {
+                  font-family: sans-serif;
+                  line-height: 1.6;
+                  margin: 0;
+                  padding: 0;
+                  background-color: #f4f4f4;
+                }
+                .container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  padding: 20px;
+                  background-color: #fff;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                }
+                h1 {
+                  color: #333;
+                }
+                .code {
+                  font-size: 24px;
+                  font-weight: bold;
+                  color: #007bff;
+                  margin-top: 20px;
+                  margin-bottom: 20px;
+                  text-align: center;
+                }
+                .note {
+                  font-size: 14px;
+                  color: #777;
+                }
+                .footer {
+                  margin-top: 20px;
+                  font-size: 12px;
+                  color: #999;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>Email Verification</h1>
+                <p>
+                  Thank you for signing up! Please use the verification code below to confirm your email address:
+                </p>
+                <div class="code">${tempCode}</div>
+                <p class="note">
+                  This code is valid for a limited time. If you did not request this, please ignore this email.
+                </p>
+                <div class="footer">
+                  © ${new Date().getFullYear()} Metatron. All rights reserved.
+                </div>
+              </div>
+            </body>
+           </html>`
+
+       
+        let emailSubject="Metatron Email Verification Code"
+
+        // creating a transporter
+         const transporter = nodemailer.createTransport({
+            host: process.env.BREVO_HOST,
+            port: 587, // Or 465 for secure SSL/TLS
+            secure: false, // true for 465, false for other ports
+            auth: {
+            user: process.env.BREVO_SMTP_LOGIN, 
+            pass: process.env.BREVO_SMTP_KEY
+            }
+        });
+
+        // mail options
+          const mailOptions = {
+            from: process.env.BREVO_FROM, 
+            to: email, 
+            subject:emailSubject,
+            html: htmlContent
+        };
+
+        // save the email code in the database, if exists it will throw error
+        await EmailVerificationSchema.create({ email, email_code: tempCode });
+        
+         // sending the email
+        transporter.sendMail(mailOptions);
+
+        // user not verified their email, though passed signin test,send email to the frontend as response
+        res.status(200).send(user.email)
+}
+    
     } else {
       // incorrect password
       throw new Error("incorrect login credentials!");
     }
   } catch (error) {
+    // debug error
+    console.log(error.message)
     // send the error to the frontend
     res.status(400).send(error.message);
   }
 };
 
-// handle reset password
-const handleResetPassword = async (req, res) => {
-  const {
-    email,
-    phone
-  } = req?.body || {};
 
+// handle email verification
+export const handleEmailVerification=async(req,res)=>{
   try {
-    // check if the provided email is valid like acceptable email
-    if (!validator.isEmail(email)) {
-      throw new Error("provided email is malformed!");
+    // extract the details from the body of the request
+    const {email,email_code}=req?.body || {}
+
+    // check for user with that email in db
+    const user=await personalModel.findOne({email})
+
+    // check in the database if email exists
+    const result=await EmailVerificationSchema.findOne({email})
+    const databaseCode=result.email_code
+
+    if (!user) {
+      throw new Error('user records not found!')
     }
 
+    if (!result) {
+      throw new Error('record not found!')
+    }
+
+ // checking if the email verification codes are matching
+    if (databaseCode==email_code) {
+      // updating the user attribute email verified
+    user.email_verified=true
+
+    // save the user
+    await user.save()
+
+    // delete the verification records
+    await EmailVerificationSchema.findOneAndDelete({email})
+
+    // sending the response to the frontend or client
+    res.status(200).send('verification successful!')
+    }
+    else{
+      // wrong verification code
+      throw new Error('wrong verification code!')
+    }    
+  } catch (error) {
+    // debug error
+    console.log(error)
+    // send the error back to the client
+    res.status(400).send(error.message)
+    
+  }
+}
+
+
+// handle request password request code
+export const handleResetCodeRequest=async(req,res)=>{
+
+  try {
+    const {email}=req.body || {}
+      // check if the provided email is valid like acceptable email
+    if (!validator.isEmail(email)) {
+      throw new Error("email is invalid!");
+    }
 
     const user = await PersonalModel.findOne({
       email
     });
 
-    // user does not exist
+       // user does not exist
     if (!user) {
       throw new Error(
-        "create new account to access our services!"
+        "account records not found!"
       );
     }
 
-    // check if provided phone number matches with the one present in DB
-    if (user.phone !== phone) {
-      throw new Error("provided phone number is invalid")
+     // check for reset code records in the db, if exist then use the email_code and no generations
+      const resetCodeRecords=await ResetCodeModal.findOne({email})
+
+      let tempCode="88573"
+
+      if (resetCodeRecords) {
+        tempCode=resetCodeRecords.email_code
+      }else{
+        tempCode=generateResetCode()
+      }
+
+
+        const htmlContent=`<html>
+            <head>
+              <meta charset="utf-8">
+              <title>Email Verification</title>
+              <style>
+                body {
+                  font-family: sans-serif;
+                  line-height: 1.6;
+                  margin: 0;
+                  padding: 0;
+                  background-color: #f4f4f4;
+                }
+                .container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  padding: 20px;
+                  background-color: #fff;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                }
+                h1 {
+                  color: #333;
+                }
+                .code {
+                  font-size: 24px;
+                  font-weight: bold;
+                  color: #007bff;
+                  margin-top: 20px;
+                  margin-bottom: 20px;
+                  text-align: center;
+                }
+                .note {
+                  font-size: 14px;
+                  color: #777;
+                }
+                .footer {
+                  margin-top: 20px;
+                  font-size: 12px;
+                  color: #999;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>Password Reset Code</h1>
+                <p>
+                  Please use the password reset code below to change your Metatron account password.:
+                </p>
+                <div class="code">${tempCode}</div>
+                <p class="note">
+                  This code is valid for a limited time. If you did not request this, please ignore this email.
+                </p>
+                <div class="footer">
+                  © ${new Date().getFullYear()} Metatron. All rights reserved.
+                </div>
+              </div>
+            </body>
+           </html>`
+
+       
+        // extract user email
+        let emailSubject="Metatron Password Reset Code"
+
+        // creating a transporter
+         const transporter = nodemailer.createTransport({
+            host: process.env.BREVO_HOST,
+            port: 587, // Or 465 for secure SSL/TLS
+            secure: false, // true for 465, false for other ports
+            auth: {
+            user: process.env.BREVO_SMTP_LOGIN, 
+            pass: process.env.BREVO_SMTP_KEY
+            }
+        });
+
+        // mail options
+          const mailOptions = {
+            from: process.env.BREVO_FROM, 
+            to: email, 
+            subject:emailSubject,
+            html: htmlContent
+        };
+
+        // save in the reset request in the reset code, if exists it will throw an error
+        await ResetCodeModal.create({
+          email,
+          email_code:tempCode
+        });
+
+    // send the email to the user
+    transporter.sendMail(mailOptions)
+
+    // send response back to the frontend
+    res.status(200).send({
+      message: 'reset code sent!',
+      status: true
+    })
+    
+  } catch (error) {
+    // debug
+    console.log(error.message)
+    res.status(400).send(error.message)
+  }
+}
+
+// handle reset password
+const handleVerifyResetCode = async (req, res) => {
+  const {email_code,email:bodyEmail}=req.body || {}
+  try { 
+    // check if the provided email is valid like acceptable email
+    if (!validator.isEmail(bodyEmail)) {
+      throw new Error("email is invalid!");
     }
 
-    // check if any previous reset code exists in the database
-    const resetCode = await ResetCodeModal.findOne({
-      email
+    // locate user record
+    const user = await personalModel.findOne({
+      email: bodyEmail
     });
-    // if it exists, delete it
-    if (resetCode) {
-      // delete the previous reset code
-      await ResetCodeModal.findOneAndDelete({
-        email
-      });
+    // locate verification records
+    const verificationRecords=await ResetCodeModal.findOne({email:bodyEmail})
+
+    // user does not exist
+    if (!user) {
+      throw new Error(
+        "account records not found!"
+      );
     }
 
-    // save in the reset request in the reset code modal
-    await ResetCodeModal.create({
-      email,
-    });
+    if (!verificationRecords) {
+      throw new Error("request for code!")
+    }
 
+    // compare the two emailCodes records, one from body and other in db
+    if (email_code===verificationRecords.email_code) {
 
     // password reset code request successful
     res.status(200).json({
-      message: 'reset your password now',
+      message: 'complete password reset',
       status: true
     })
-
+    } else {
+      throw new Error('invalid reset code!')
+    }
 
   } catch (error) {
-    // monitor the error
+    // debug
     console.error('failed to send email:', error);
     // send the error to the frontend
     res.status(400).json({
@@ -324,24 +606,22 @@ const handleResetPassword = async (req, res) => {
 
 
 // complete password reset
-const handleCompletePaswordReset = async (req, res) => {
+const handleCompletePasswordReset = async (req, res) => {
   const {
     email,
-    newPassword,
-
-
+    newPassword
   } = req?.body || {};
 
 
   try {
     // check if the provided email is valid like acceptable email
     if (!validator.isEmail(email)) {
-      throw new Error("Provided email is malformed!");
+      throw new Error("email is invalid!");
     }
 
-    // passwords must be aleast 6 characters  
+    // passwords must be at least 6 characters  
     if (newPassword?.length < 6) {
-      throw new Error("password too short must be 6 characters minimum!");
+      throw new Error("password must be 6 characters minimum!");
     }
 
     // check if this email exists in the resetCode database else reject
@@ -350,7 +630,7 @@ const handleCompletePaswordReset = async (req, res) => {
     })
 
     if (!emilCheck) {
-      throw new Error("please request for a reset code first");
+      throw new Error("unauthorized request!");
     }
 
     // using bcrypt to encrypt user password
@@ -361,8 +641,6 @@ const handleCompletePaswordReset = async (req, res) => {
       email
     }, {
       password: hashedpass,
-
-
     }, {
       new: true
     });
@@ -372,7 +650,7 @@ const handleCompletePaswordReset = async (req, res) => {
     })
 
     res.status(200).json({
-      message: 'password reset successfully',
+      message: 'changed successfully!',
       status: true
     })
 
@@ -389,8 +667,8 @@ const handleCompletePaswordReset = async (req, res) => {
 
 
 export {
-  handleCompletePaswordReset,
-  handleResetPassword,
+  handleCompletePasswordReset as handleCompletePaswordReset,
+  handleVerifyResetCode as handleResetPassword,
   handleSigninPersonal,
   handleSignupPersonal,
   handleSignupPersonalMongo

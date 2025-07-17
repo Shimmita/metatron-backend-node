@@ -4,20 +4,20 @@ import mongoose from "mongoose";
 // and will be deleted from the database
 // this is used to store the reset password code
 const ResetPasswordSchema = new mongoose.Schema({
-    email: {
-        type: String,
-        required: [true, "email is required"],
-        trim: true,
-        unique: true,
+    
+      email: {
+      type:String,
+      required:false,
+      unique:[true,'code already sent!'],
+      required:[true,'email required!']
+    },
+    email_code: {
+      type:String,
+      required:[true,'verification code required!'],
+      trim:true
     },
 
-    createdAt: {
-        type: Date,
-        default: Date.now,
-        expires: 3600 
-    }
-
-});
+},{timestamps:true});
 
 
 export default mongoose.model("resetCode", ResetPasswordSchema);
