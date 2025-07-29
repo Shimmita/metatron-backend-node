@@ -106,6 +106,7 @@ export const handleGetAllTechiePost = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+
     // retrieve all posts in order of latest first
     const allPosts = await TechPostModal.find({})
       .sort({
@@ -173,10 +174,10 @@ export const handleGetAllFilteredPosts=async(req,res)=>{
 
 }
 
-// get top 3 posts
+// get top 4 posts
 export const handleGetTopPosts = async (req, res) => {
   try {
-    const posts = await TechPostModal.find().limit(3);
+    const posts = await TechPostModal.find().limit(4);
     res.status(200).send(posts);
   } catch (error) {
     //log the error

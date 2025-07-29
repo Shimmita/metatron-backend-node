@@ -29,6 +29,7 @@ import {
 } from "./routes/manage_post_route.js";
 import manageUsersRoute from "./routes/manage_users_route.js";
 import { eventsManageRouter } from "./routes/manage_events_route.js";
+import managePlatformInsights from "./routes/manage_insights_route.js";
 const mongoDBSession = connectMongoStore(session);
 const app = express();
 app.use(bodyParser.json());
@@ -118,11 +119,17 @@ app.use(`${BASE_ROUTE}/network`, handleAuthMiddleware, manageNetworkRoute);
 // global search route
 app.use(`${BASE_ROUTE}/global`, handleAuthMiddleware, manageGlobalSearchRoute);
 
+// conversations
 app.use(
   `${BASE_ROUTE}/conversations`,
   handleAuthMiddleware,
   manageConversationsRoute
 );
+
+// platform insights route
+app.use(`${BASE_ROUTE}/insights`, handleAuthMiddleware, managePlatformInsights);
+
+
 
 // signOut user
 app.use(`${BASE_ROUTE}/signout`, (req, res) => {

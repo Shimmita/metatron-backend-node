@@ -50,7 +50,6 @@ manageJobsRouter.get("/all/feedback/:userId", handleGetAllJobFeedBack);
 // delete a job feedback
 manageJobsRouter.delete("/all/feedback/:feedId", handleDeleteJobFeedBack);
 
-
 // get nearby jobs
 manageJobsRouter.post("/all/nearby/:userId", handleGetNearbyJobs);
 

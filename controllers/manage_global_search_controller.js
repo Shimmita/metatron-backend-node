@@ -1,3 +1,4 @@
+import AddEventModel from "../model/AddEventModel.js";
 import JobPostModel from "../model/JobPostModel.js";
 import personalModel from "../model/personalModel.js";
 import TechPostModel from "../model/TechPostModel.js";
@@ -43,6 +44,13 @@ export const handleGetGlobalSearchResults = async (req, res) => {
       $or: [
         // match job title
         { title: regex },
+        { 'organisation.name': regex },
+        { 'organisation.about': regex },
+        { 'jobtypeaccess.type': regex },
+        { 'jobtypeaccess.access': regex },
+        { 'location.country': regex },
+        { 'location.county': regex },
+        { 'entry.level': regex },
         // match skills in job title
         { skills: { $in: [regex] } },
       ],
@@ -50,14 +58,37 @@ export const handleGetGlobalSearchResults = async (req, res) => {
 
     // Search Posts
     const postsQuery = {
-      $or: [{ post_title: regex }, { description: regex }],
+      $or: [
+        { post_title: regex }, 
+        { post_body: regex }, 
+        { description: regex },
+        { 'post_category.main': regex },
+        { 'post_location.country': regex },
+        { 'post_location.state': regex },
+        { 'post_owner.ownername': regex },
+        { 'post_owner.ownertitle': regex },
+      ],
+    };
+
+    // search events
+       const eventsQuery = {
+      $or: [
+        { title: regex },
+         { category: regex },
+         { about: regex },
+         // match skills in events
+        { skills: { $in: [regex] } },
+        // match topics in events
+        { topics: { $in: [regex] } },
+        ],
     };
 
     // Run all queries in parallel
-    const [users, jobs, posts] = await Promise.all([
+    const [users,jobs,posts,events] = await Promise.all([
       personalModel.find(usersQuery),
       JobPostModel.find(jobsQuery),
       TechPostModel.find(postsQuery),
+      AddEventModel.find(eventsQuery)
     ]);
 
     // Format response
@@ -65,6 +96,7 @@ export const handleGetGlobalSearchResults = async (req, res) => {
       users: { count: users.length, data: users },
       jobs: { count: jobs.length, data: jobs },
       posts: { count: posts.length, data: posts },
+      events:{count:events.length,data:events}
     };
 
     // send response to the frontend

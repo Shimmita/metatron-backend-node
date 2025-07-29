@@ -40,6 +40,7 @@ export const handleGetSpecificUser = async (req, res) => {
 
     // look for a user with the matching id and return
     const user = await personalModel.findById(userId, {
+      avatar:1,
       name: 1,
       specialisationTitle: 1,
       country: 1,
@@ -71,7 +72,6 @@ export const handleGetSpecificUser = async (req, res) => {
     if (!userViewing) {
       throw new Error('user not found!')
     }
-
 
     // check if the exact senderId and userId already present in profile viewer  db
     const requestObject = await ProfileViewerModel.findOne({

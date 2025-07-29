@@ -249,7 +249,7 @@ export const handleGetAllConnectionRequest = async (req, res) => {
   }
 };
 
-// handle getting of top 10 users who ain't friend to the currently userId
+// handle getting of top 4 users who ain't friend to the currently userId
 // in the network array
 export const handleGetTopUsersToConnect = async (req, res) => {
   try {
@@ -257,7 +257,7 @@ export const handleGetTopUsersToConnect = async (req, res) => {
     //get the user with the passed id params and return their array
     const networkData = await personalModel
       .findById({ _id: userId }, { network: 1, _id: 0 })
-      .limit(20)
+      .limit(4)
       .sort({ createdAt: -1 });
     const currentUserNetwork = networkData ? networkData.network : [];
 

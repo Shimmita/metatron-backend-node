@@ -24,7 +24,7 @@ const AddEventModel = new mongoose.Schema({
     count:{
       type:Number,
       required:false,
-      default:10
+      default:0
     },
     value:{
       type:[String],

@@ -76,23 +76,27 @@ export const handleCreateJob = async (req, res) => {
 // get all jobs
 export const handleGetAllJobs = async (req, res) => {
 
-  // extract userId passed in the params
-  const {
-    userId
-  } = req?.params || {}
-
-
   try {
+
+    // extract userId passed in the params
+    const {userId } = req?.params || {}
+
+    // extracting the query params from the frontend
+    const page = parseInt(req.query.page)+1 || 1;
+    const limit = parseInt(req.query.limit) || 6;
+    const skip = (page - 1) * limit;
+
     // sort them the latest first
     const allJobs = await JobPostModel.find({})
       .sort({
         createdAt: -1
       })
-      .limit(20);
-    // no jobs posted
+      .skip(skip)
+      .limit(limit);
+    // no more jobs posted
     if (allJobs.length < 1) {
       throw new Error(
-        "currently there are no jobs."
+        "currently there are no more jobs!"
       );
     }
 
@@ -596,10 +600,7 @@ export const handleDeleteMyJobApplication = async (req, res) => {
     res.status(400).send(error?.message)
   }
 
-
 }
-
-
 
 
 // handle getting of jobs applied by the user
@@ -637,7 +638,6 @@ export const handleGetMyJobApplications = async (req, res) => {
       }
 
     })
-
 
     // jobs present
     res.status(200).send(appliedJobs);
@@ -757,10 +757,6 @@ export const handleGetRecommended = async (req, res) => {
       createdAt: -1,
     });
 
-    // no recommended job found
-    if (!searchResults) {
-      throw new Error("No matching jobs found.")
-    }
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.
@@ -795,7 +791,7 @@ export const handleGetRecommended = async (req, res) => {
 
 }
 
-// get top 3 jobs that are latest
+// get top 5 jobs that are latest
 export const handleGetTopJobs = async (req, res) => {
   // extract userId passed in the params
   const {
@@ -811,7 +807,7 @@ export const handleGetTopJobs = async (req, res) => {
       .sort({
         createdAt: -1
       })
-      .limit(4);
+      .limit(5);
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.
@@ -966,7 +962,7 @@ export const handleGetNearbyJobs = async (req, res) => {
   // extract the country of the user from the request body
   const {
     country
-  } = req.body;
+  } = req.body || {};
 
   try {
     const allJobs = await JobPostModel.find({
@@ -1027,7 +1023,7 @@ export const handleGetAllJobsSearch = async (req, res) => {
   try {
     const {
       job_titles = [], datePosted, country, entry
-    } = req.body;
+    } = req.body || {};
 
     // Validate job_titles array
     if (!Array.isArray(job_titles)) {
@@ -1124,11 +1120,6 @@ export const handleGetAllJobsSearch = async (req, res) => {
       createdAt: -1,
     });
 
-    // no job found
-    if (searchResults.length < 1) {
-      return res.status(404).json("No matching jobs found.");
-    }
-
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.
@@ -1156,9 +1147,7 @@ export const handleGetAllJobsSearch = async (req, res) => {
 
     // return matching jobs
     res.status(200).json({
-      message: `Found ${checkedJobs.length} ${
-        checkedJobs.length > 1 ? "jobs" : "job"
-      }.`,
+      message: `Found ${checkedJobs.length} jobs`,
       data: checkedJobs,
     });
   } catch (error) {
