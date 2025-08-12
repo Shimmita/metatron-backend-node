@@ -32,7 +32,6 @@ export const uploadToCloudinary = (buffer, folder, type="image") => {
     readableStream._read = () => {};
     readableStream.push(buffer);
     readableStream.push(null);
-
     readableStream.pipe(stream);
   });
 };

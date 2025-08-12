@@ -9,6 +9,7 @@ import {
 import {
   CompressImageFunction
 } from "../utils/compressImage.js";
+import AddEventModel from "../model/AddEventModel.js";
 
 
 // controls sending the request to the deployed Ai model for response
@@ -318,6 +319,9 @@ export const handleUserUpdateDetails = async (req, res) => {
       // avatar updated
       await updateUserPosts(userID, user)
 
+      // update user events details if any
+      await updateUserEventPosts(userID,user)
+
       // send the response to the frontend
       res.status(200).send({
         message: "changes updated successfully",
@@ -350,13 +354,15 @@ export const handleUserUpdateDetails = async (req, res) => {
       // avatar updated
       await updateUserPosts(userID, user)
 
+      // update user events details if any
+      await updateUserEventPosts(userID,user)
+
       // return the success response to the frontend
       res.status(200).send({
         message: "changes updated successfully",
         data: user
       });
     }
-
 
   } catch (error) {
     const errorMessage = error.message
@@ -372,6 +378,33 @@ export const handleUserUpdateDetails = async (req, res) => {
 
   }
 };
+
+
+const updateUserEventPosts=async(userId,user)=>{
+  // no user passed
+  if (!user) {
+    return
+  }
+
+  const eventsPosted=await AddEventModel.find({ownerId:userId})
+  // no event posted by the user
+  if (!eventsPosted) {
+    return 
+  }
+
+  // update relevant details location, avatar, name, specialization,skills
+  for (const element of eventsPosted) {
+    element.ownerAvatar=user?.avatar 
+    element.ownerSpecialize=user?.specialisationTitle
+    element.skills=user?.selectedSkills
+    element.location.country=user?.country
+    element.location.state=user?.county
+
+    // save
+    await element.save()
+  }
+
+}
 
 
 // updates any user posts data

@@ -253,14 +253,27 @@ export const handleGetAllConnectionRequest = async (req, res) => {
 // in the network array
 export const handleGetTopUsersToConnect = async (req, res) => {
   try {
+    // extracting the query params from the frontend
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 4;
+    const skip = (page - 1) * limit;
     const userId = req?.params.id;
+
     //get the user with the passed id params and return their array
     const networkData = await personalModel
       .findById({ _id: userId }, { network: 1, _id: 0 })
-      .limit(4)
+      .limit(limit)
+      .skip(skip)
       .sort({ createdAt: -1 });
+      
     const currentUserNetwork = networkData ? networkData.network : [];
 
+    // current user network none, return empty list 
+    if (!networkData) {
+      res.status(200).send([]);
+      return
+    }
+   
     // Convert all network IDs and the current user ID to ObjectId
     // Map network IDs to ObjectId. Exclude also current user ID as ObjectId
     const excludedIds = [

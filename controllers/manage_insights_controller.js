@@ -39,17 +39,17 @@ export const getPlatformInsights = async (req, res) => {
       });
     });
 
-    // 4. Most Popular Post Topics
-    const topPostCategories = await TechPostModel.aggregate([
-      { $group: { _id: "$post_category.main", count: { $sum: 1 } } },
+    // 4. popular job posts
+    const topJobPosts = await JobPostModel.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 1 }
     ]);
 
-    topPostCategories.forEach(post => {
+    topJobPosts.forEach(job => {
       insights.push({
-        title: `${post._id}`,
-        details: `Most post on ${post._id}.`
+        title: `${job._id}`,
+        details: `Most jobs are ${job._id}.`
       });
     });
 
@@ -82,3 +82,108 @@ export const getPlatformInsights = async (req, res) => {
     res.status(500).json({ message: "Error generating insights" });
   }
 };
+
+// handle fetching of all recommendation insights
+export const getAllInsightsRecommendation=async(req,res)=>{
+  
+  try {
+
+    // extract skills of the user from the body request
+    const user_skills = req?.body
+
+    // will store final output
+    let outPutData=[]
+
+    // 1. Top skills in users
+    const topUserSkills = await personalModel.aggregate([
+      { $unwind: "$selectedSkills" },
+      { $group: { _id: "$selectedSkills", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 }
+    ]);
+
+    // 3. Most Requested Skills in Jobs
+    const topJobSkills = await JobPostModel.aggregate([
+      { $unwind: "$skills" },
+      { $group: { _id: "$skills", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 }
+    ]);
+
+    //5. top job categories
+     const topJobCategory = await JobPostModel.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 }
+    ]);
+
+    //5. recommended job titles for the user
+    // Initialize query
+    const query = {
+      $and: []
+    };
+
+    // handle job_skill-set search
+    if (user_skills.length > 0) {
+      query.$and.push({
+        $or: [
+          ...user_skills.map((term) => ({
+            title: {
+              $regex: term,
+              $options: "i"
+            },
+          })),
+          ...user_skills.map((term) => ({
+            skills: {
+              $elemMatch: {
+                $regex: term,
+                $options: "i"
+              }
+            },
+          })),
+        ],
+      });
+    }
+
+     // fetch jobs from the database latest first on the search results
+        const topRecommendJobs = await JobPostModel.find(query,{title:1}).sort({
+          createdAt: -1,
+        }).limit(6);
+
+    // 6. Most Popular Post Topics
+    const topPostCategories = await TechPostModel.aggregate([
+      { $group: { _id: "$post_category.main", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 }
+    ]);
+
+    // 5. Most Popular Events Post
+    const topEventCategories = await AddEventModel.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 }
+    ]);
+
+    // 6. popular events recommended for user to attend
+     // fetch jobs from the database latest first on the search results
+        const topEventsRecommended = await AddEventModel.find(query,{title:1}).sort({
+          createdAt: -1,
+        }).limit(6);
+
+    // details are returned based and description sorted by length ascending
+    outPutData.push({label:"skills possessed by most users ", description:topUserSkills.map(skill=>skill._id).sort((a,b)=>a.length-b.length)})
+    outPutData.push({label:"skills required by most recruiters", description:topJobSkills.map(job=>job._id).sort((a,b)=>a.length-b.length)})
+    outPutData.push({label:"Popular jobs posted by recruiters", description:topJobCategory.map(job=>job._id).sort((a,b)=>a.length-b.length)})
+    outPutData.push({label:"Top Jobs recommended for you", description:topRecommendJobs.map(job=>job.title).sort((a,b)=>a.length-b.length)})
+    outPutData.push({label:"Popular tech events posted by users", description:topEventCategories.map(event=>event._id).sort((a,b)=>a.length-b.length)})
+    outPutData.push({label:"Tech events recommended for you", description:topEventsRecommended.map(event=>event.title).sort((a,b)=>a.length-b.length)})
+    outPutData.push({label:"Top milestone posts done by users", description:topPostCategories.map(post=>post._id).sort((a,b)=>a.length-b.length)})
+
+    // send the response to the frontend, client
+    res.status(200).send(outPutData)
+
+  } catch (error) {
+     console.error("error:", error);
+    res.status(500).send(error.message);
+  }
+}

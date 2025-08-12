@@ -19,13 +19,9 @@ coursesManageRouter.post(
   handleCreateNewCourse
 );
 
-// getAllPost
+// get all courses posts
 coursesManageRouter.get("/all", handleGetAllCourses);
 
-// get specific job
-coursesManageRouter.get("/all/:id", (req, res) => {
-  res.status(200).send("working get spefic job");
-});
 
 // edit post
 coursesManageRouter.patch("/edit/:id", handleUpdateCourse);

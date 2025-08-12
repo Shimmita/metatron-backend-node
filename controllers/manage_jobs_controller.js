@@ -649,7 +649,7 @@ export const handleGetMyJobApplications = async (req, res) => {
 }
 
 
-// get job stats of the user
+// handle get job stats of the user
 export const handleGetMyJobStats = async (req, res) => {
   // extract userId passed in the params
   const {
@@ -694,6 +694,8 @@ export const handleGetMyJobStats = async (req, res) => {
       }
 
     })
+
+    console.log(appliedJobs)
 
     // jobs present
     res.status(200).send(appliedJobs);
@@ -1022,7 +1024,7 @@ export const handleGetAllJobsSearch = async (req, res) => {
 
   try {
     const {
-      job_titles = [], datePosted, country, entry
+      job_titles = [], datePosted, country, entry, category
     } = req.body || {};
 
     // Validate job_titles array
@@ -1055,6 +1057,13 @@ export const handleGetAllJobsSearch = async (req, res) => {
           })),
         ],
       });
+    }
+
+    // handle category
+    if (category) {
+      query.$and.push({
+          category: category
+        });
     }
 
     // Handle datePosted filter

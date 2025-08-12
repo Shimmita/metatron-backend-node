@@ -29,6 +29,8 @@ export const handleCreateNewCourse = async (req, res) => {
     const videoFiles = [...req.files['videos']];
     const imageFile = req.files['image']?.[0];
 
+    
+
     // Step 3: Calculate total file size in MB
     let totalSizeMB = 0;
     videoFiles.forEach(file => {

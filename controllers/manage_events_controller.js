@@ -130,7 +130,6 @@ export const handleGetSearchEvents=async(req,res)=>{
       $and: []
     };
 
-
       // Handle job_titles search
     if (job_titles.length > 0) {
       query.$and.push({

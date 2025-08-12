@@ -6,6 +6,11 @@ const jobSchema = new mongoose.Schema({
     required: [true, "job title is required"],
     trim: true,
   },
+   category: {
+    type: String,
+    required: [true, "job specialization is required"],
+    trim: true,
+  },
   organisation: {
     name: {
       type: String,
@@ -189,6 +194,7 @@ const jobSchema = new mongoose.Schema({
 
   },
 
+
   // tracks doc name of the current user
   cvName: {
     type: String,
@@ -201,6 +207,7 @@ const jobSchema = new mongoose.Schema({
     type: Date,
     required: false
   },
+
   
 }, {
   timestamps: true,

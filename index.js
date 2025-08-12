@@ -19,7 +19,9 @@ import manageConversationsRoute from "./routes/manage_converse_route.js";
 import {
   coursesManageRouter
 } from "./routes/manage_courses_route.js";
+import { eventsManageRouter } from "./routes/manage_events_route.js";
 import manageGlobalSearchRoute from "./routes/manage_global_search_route.js";
+import managePlatformInsights from "./routes/manage_insights_route.js";
 import {
   manageJobsRouter
 } from "./routes/manage_jobs_route.js";
@@ -27,16 +29,15 @@ import manageNetworkRoute from "./routes/manage_network_route.js";
 import {
   postManageRouter
 } from "./routes/manage_post_route.js";
+import manage_premium_route from "./routes/manage_premium_route.js";
 import manageUsersRoute from "./routes/manage_users_route.js";
-import { eventsManageRouter } from "./routes/manage_events_route.js";
-import managePlatformInsights from "./routes/manage_insights_route.js";
 const mongoDBSession = connectMongoStore(session);
 const app = express();
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(
   cors({
-    origin: process.env.CROSS_ORIGIN_ALLOWED,
+    origin: [process.env.CROSS_ORIGIN_ALLOWED],
     credentials: true,
   })
 );
@@ -73,7 +74,7 @@ app.use(
     name: process.env.SESSION_NAME,
     store,
     cookie: {
-      maxAge: 60 * 60 * 3 * 1000,
+      maxAge: 60 * 60 * 24 * 1000,
     },
   })
 );
@@ -129,6 +130,8 @@ app.use(
 // platform insights route
 app.use(`${BASE_ROUTE}/insights`, handleAuthMiddleware, managePlatformInsights);
 
+// premium route
+app.use(`${BASE_ROUTE}/premium`, handleAuthMiddleware, manage_premium_route);
 
 
 // signOut user

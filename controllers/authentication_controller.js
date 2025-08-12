@@ -191,7 +191,7 @@ const handleSignupPersonalMongo = async (req, res) => {
       // Upload the compressed AVIF image to Cloudinary
       const result = await uploadToCloudinary(
         compressedImageBuffer,
-        "metatron/avatars"
+        process.env.CLOUDINARY_POST_IMAGES_FOLDER
       );
 
       // extracting the url from the result of cloudinary upload
