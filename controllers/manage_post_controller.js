@@ -844,7 +844,7 @@ export const handleGetAllFavoritePosts = async (req, res) => {
       // fetching the posts
       const post=await TechPostModal.findById(favoritePost.postId)
       // appending the posts
-      allFavoritePosts=[...allFavoritePosts,post]
+      allFavoritePosts.push(post)
     }
 
     // send the response back to the frontend
@@ -872,7 +872,7 @@ export const handleDeleteFavoritePost=async(req,res)=>{
     )
 
     // send success response
-    res.status(200).send('removed successfully')
+    res.status(200).send('post removed')
     
   } catch (error) {
     console.log(error)

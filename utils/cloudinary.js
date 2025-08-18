@@ -38,19 +38,61 @@ export const uploadToCloudinary = (buffer, folder, type="image") => {
 
 
 // upload video to cloudinary
-export const uploadVideoToCloudinary = (buffer, filename,folder) => {
-  return new Promise((resolve, reject) => {
+export const uploadVideoToCloudinary = async (buffer, filename, folder) => {
+  return new Promise(async (resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder,resource_type: 'video', public_id: `videos/${Date.now()}_${filename}` },
+      {
+        folder,
+        resource_type: 'video',
+        public_id: `videos/${Date.now()}_${filename}`
+      },
       (error, result) => {
         if (error) reject(new Error(error));
         else resolve(result);
       }
     );
-    stream.end(buffer);
+    // Use readable stream for buffer
+    const readableStream = new (await import('stream')).Readable();
+    readableStream._read = () => {};
+    readableStream.push(buffer);
+    readableStream.push(null);
+    readableStream.pipe(stream);
   });
 };
 
+
+// upload video to cloudinary with progress
+export const uploadVideoToCloudinaryWithProgress = async (buffer, filename, folder, onProgress) => {
+  return new Promise(async (resolve, reject) => {
+    const totalBytes = buffer.length;
+    let uploadedBytes = 0;
+
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'video',
+        public_id: `videos/${Date.now()}_${filename}`
+      },
+      (error, result) => {
+        if (error) reject(new Error(error));
+        else resolve(result);
+      }
+    );
+
+    const readableStream = new (await import('stream')).Readable();
+    readableStream._read = () => {};
+    readableStream.push(buffer);
+    readableStream.push(null);
+
+    readableStream.on('data', (chunk) => {
+      uploadedBytes += chunk.length;
+      const percent = Math.round((uploadedBytes / totalBytes) * 100);
+      if (onProgress) onProgress(percent);
+    });
+
+    readableStream.pipe(stream);
+  });
+};
 
 // delete video from cloudinary
 export const deleteVideoFromCloudinary = (publicId) => {

@@ -26,47 +26,6 @@ const instructorDetails = new mongoose.Schema({
     default: ""
   },
 
-  instructorEmail: {
-    type: String,
-    required: true,
-    trim: true,
-    default: ""
-  },
-
-  instructorPhone: {
-    type: String,
-    required: true,
-    trim: true,
-    default: ""
-  },
-
-  instructorSkills: {
-    type: [String],
-    required: [true, 'instructor skills required'],
-  },
-
-  instructorGitHub: {
-    type: String,
-    required: false,
-    trim: true,
-    default: ""
-  },
-
-  instructorLinkedIn: {
-    type: String,
-    required: false,
-    trim: true,
-    default: ""
-  },
-
-
-  instructorWebsite: {
-    type: String,
-    required: false,
-    trim: true,
-    default: ""
-  },
-
   //prevent id generation
   _id: false,
 });

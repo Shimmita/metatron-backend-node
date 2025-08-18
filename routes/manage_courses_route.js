@@ -4,7 +4,7 @@ import {
   handleCreateNewCourse,
   handleDeleteCourse,
   handleGetAllCourses,
-  handleUpdateCourse,
+  handleUpdateCourse
 } from "../controllers/manage_courses_controller.js";
 
 // Set up multer for file uploads
@@ -18,6 +18,7 @@ coursesManageRouter.post(
   uploadMulter.fields([{name:'videos'},{name:'image'}]),
   handleCreateNewCourse
 );
+
 
 // get all courses posts
 coursesManageRouter.get("/all", handleGetAllCourses);

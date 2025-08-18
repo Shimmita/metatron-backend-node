@@ -1,8 +1,8 @@
 import { v2 as cloudinary } from "cloudinary";
-import TechPostModal from "../model/TechPostModel.js";
-import { uploadToCloudinary, uploadVideoToCloudinary } from "../utils/cloudinary.js";
-import { CompressImageFunction } from "../utils/compressImage.js";
 import PostCourseModel from "../model/PostCourseModel.js";
+import TechPostModal from "../model/TechPostModel.js";
+import { uploadToCloudinary, uploadVideoToCloudinary, uploadVideoToCloudinaryWithProgress } from "../utils/cloudinary.js";
+import { CompressImageFunction } from "../utils/compressImage.js";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -28,8 +28,6 @@ export const handleCreateNewCourse = async (req, res) => {
     const dataBody = JSON.parse(req.body?.course);
     const videoFiles = [...req.files['videos']];
     const imageFile = req.files['image']?.[0];
-
-    
 
     // Step 3: Calculate total file size in MB
     let totalSizeMB = 0;
@@ -61,13 +59,20 @@ export const handleCreateNewCourse = async (req, res) => {
 
     // Step 6: Upload all videos concurrently and collect results
     const uploadedVideos = await Promise.all(
-      videoFiles.map(async (file) => {
-        const result = await uploadVideoToCloudinary(
+      videoFiles.map(async (file, idx) => {
+        const result = await uploadVideoToCloudinaryWithProgress(
           file.buffer,
           file.originalname,
-          process.env.CLOUDINARY_COURSES_VIDEOS_FOLDER
+          process.env.CLOUDINARY_COURSES_VIDEOS_FOLDER,
+          (percent) => {
+            // Send progress to all SSE clients
+            if (req.app.locals.uploadProgressClients) {
+              req.app.locals.uploadProgressClients.forEach(client => {
+                client.write(`data: {\"videoIndex\":${idx},\"percent\":${percent}}\n\n`);
+              });
+            }
+          }
         );
-
         return {
           video_lecture_link: result?.secure_url,
           video_lectureID: result?.public_id
@@ -127,25 +132,96 @@ const handleGetSpecificCourse = async () => {
 
 // edit post
 export const handleUpdateCourse = async (req, res) => {
-  // get the body
-  const body = req?.body;
-  // obtain id passed as params
   const id = req.params.id;
-
   try {
-    await TechPostModal.findByIdAndUpdate(
-      { _id: id },
-      { $set: { post_body: body } }
-    );
+    // Find the course
+    const course = await PostCourseModel.findById(id);
+    if (!course) throw new Error("Course not found");
 
-    res.status(200).send("post updated successfully");
+    // Parse updated data
+    const updatedData = req.body?.course ? JSON.parse(req.body.course) : req.body;
+    const videoFiles = req.files?.videos || [];
+    const imageFile = req.files?.image?.[0];
+
+    // Handle logo update
+    if (imageFile?.buffer) {
+      // Delete old logo from Cloudinary
+      if (course.course_logo && course.course_logo.logoID) {
+        await uploadToCloudinary.destroy(course.course_logo.logoID);
+      }
+      // Upload new logo
+      const compressedImageBuffer = await CompressImageFunction(imageFile.buffer);
+      const logoUploadResult = await uploadToCloudinary(
+        compressedImageBuffer,
+        process.env.CLOUDINARY_COURSES_IMAGES_FOLDER
+      );
+      updatedData.course_logo = {
+        logoLink: logoUploadResult?.secure_url,
+        logoID: logoUploadResult?.public_id
+      };
+    }
+
+    // Handle video update
+    if (videoFiles.length > 0) {
+      // Delete old videos from Cloudinary
+      if (course.course_video_lectures && Array.isArray(course.course_video_lectures)) {
+        for (const video of course.course_video_lectures) {
+          if (video.video_lectureID) {
+            await uploadVideoToCloudinary.destroy(video.video_lectureID, { resource_type: 'video' });
+          }
+        }
+      }
+      // Upload new videos
+      const uploadedVideos = await Promise.all(
+        videoFiles.map(async (file, idx) => {
+          const result = await uploadVideoToCloudinary(
+            file.buffer,
+            file.originalname,
+            process.env.CLOUDINARY_COURSES_VIDEOS_FOLDER
+          );
+          return {
+            video_lecture_link: result?.secure_url,
+            video_lectureID: result?.public_id
+          };
+        })
+      );
+      updatedData.course_video_lectures = uploadedVideos;
+      updatedData.course_video_topics = videoFiles.map(file => file.originalname.split(".")[0]);
+    }
+
+    // Update course in DB
+    await PostCourseModel.findByIdAndUpdate(id, { $set: updatedData });
+    res.status(200).send("Course updated successfully");
   } catch (error) {
-    res.status(400).send("failed to update post " + error.message);
+    res.status(400).send("Failed to update course: " + error.message);
   }
 };
 
 export const handleDeleteCourse = async (req, res) => {
-  // get the req params value id of the post to be deleted
   const id = req.params.id;
-  console.log(id);
+  try {
+    // Find the course
+    const course = await PostCourseModel.findById(id);
+    if (!course) throw new Error("Course not found");
+
+    // Delete associated videos from Cloudinary
+    if (course.course_video_lectures && Array.isArray(course.course_video_lectures)) {
+      for (const video of course.course_video_lectures) {
+        if (video.video_lectureID) {
+          await uploadVideoToCloudinary.destroy(video.video_lectureID, { resource_type: 'video' });
+        }
+      }
+    }
+
+    // Delete logo from Cloudinary
+    if (course.course_logo && course.course_logo.logoID) {
+      await uploadToCloudinary.destroy(course.course_logo.logoID);
+    }
+
+    // Delete course from DB
+    await PostCourseModel.findByIdAndDelete(id);
+    res.status(200).send("Course deleted successfully");
+  } catch (error) {
+    res.status(400).send(error.message);
+  }
 };
