@@ -1,6 +1,7 @@
 import AddEventModel from "../model/AddEventModel.js";
 import JobPostModel from "../model/JobPostModel.js";
 import personalModel from "../model/personalModel.js";
+import PostCourseModel from "../model/PostCourseModel.js";
 import TechPostModel from "../model/TechPostModel.js";
 
 export const getPlatformInsights = async (req, res) => {
@@ -117,39 +118,7 @@ export const getAllInsightsRecommendation=async(req,res)=>{
       { $limit: 6 }
     ]);
 
-    //5. recommended job titles for the user
-    // Initialize query
-    const query = {
-      $and: []
-    };
-
-    // handle job_skill-set search
-    if (user_skills.length > 0) {
-      query.$and.push({
-        $or: [
-          ...user_skills.map((term) => ({
-            title: {
-              $regex: term,
-              $options: "i"
-            },
-          })),
-          ...user_skills.map((term) => ({
-            skills: {
-              $elemMatch: {
-                $regex: term,
-                $options: "i"
-              }
-            },
-          })),
-        ],
-      });
-    }
-
-     // fetch jobs from the database latest first on the search results
-        const topRecommendJobs = await JobPostModel.find(query,{title:1}).sort({
-          createdAt: -1,
-        }).limit(6);
-
+  
     // 6. Most Popular Post Topics
     const topPostCategories = await TechPostModel.aggregate([
       { $group: { _id: "$post_category.main", count: { $sum: 1 } } },
@@ -164,20 +133,21 @@ export const getAllInsightsRecommendation=async(req,res)=>{
       { $limit: 6 }
     ]);
 
-    // 6. popular events recommended for user to attend
-     // fetch jobs from the database latest first on the search results
-        const topEventsRecommended = await AddEventModel.find(query,{title:1}).sort({
-          createdAt: -1,
-        }).limit(6);
+    // 7. Most Popular courses
+    const topCoursesCategories=await PostCourseModel.aggregate([
+       { $group: { _id: "$course_category.main", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 }
+    ])
+
 
     // details are returned based and description sorted by length ascending
     outPutData.push({label:"skills possessed by most users ", description:topUserSkills.map(skill=>skill._id).sort((a,b)=>a.length-b.length)})
     outPutData.push({label:"skills required by most recruiters", description:topJobSkills.map(job=>job._id).sort((a,b)=>a.length-b.length)})
     outPutData.push({label:"Popular jobs posted by recruiters", description:topJobCategory.map(job=>job._id).sort((a,b)=>a.length-b.length)})
-    outPutData.push({label:"Top Jobs recommended for you", description:topRecommendJobs.map(job=>job.title).sort((a,b)=>a.length-b.length)})
     outPutData.push({label:"Popular tech events posted by users", description:topEventCategories.map(event=>event._id).sort((a,b)=>a.length-b.length)})
-    outPutData.push({label:"Tech events recommended for you", description:topEventsRecommended.map(event=>event.title).sort((a,b)=>a.length-b.length)})
     outPutData.push({label:"Top milestone posts done by users", description:topPostCategories.map(post=>post._id).sort((a,b)=>a.length-b.length)})
+    outPutData.push({label:"Popular courses posted by instructors", description:topCoursesCategories.map(course=>course._id).sort((a,b)=>a.length-b.length)})
 
     // send the response to the frontend, client
     res.status(200).send(outPutData)

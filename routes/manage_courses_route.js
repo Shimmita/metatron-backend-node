@@ -1,9 +1,19 @@
 import express from "express";
 import multer from "multer";
 import {
+  handleCourseRating,
+  handleCreateCourseEnrollment,
   handleCreateNewCourse,
   handleDeleteCourse,
   handleGetAllCourses,
+  handleGetAllCoursesSearch,
+  handleGetInstructorCourses,
+  handleGetPDFResources,
+  handleGetPopularCourses,
+  handleGetRecommendedCourse,
+  handleGetSpecificCourse,
+  handleGetUserCerts,
+  handleGetUserEnrolledCourses,
   handleUpdateCourse
 } from "../controllers/manage_courses_controller.js";
 
@@ -20,12 +30,45 @@ coursesManageRouter.post(
 );
 
 
-// get all courses posts
-coursesManageRouter.get("/all", handleGetAllCourses);
+// get all courses posts, userId for checking if user enrolled in any
+coursesManageRouter.get("/all/:userId", handleGetAllCourses);
 
+// retrieves courses search
+coursesManageRouter.post("/all/search/:userId", handleGetAllCoursesSearch);
+
+// course rating
+coursesManageRouter.patch("/all/rating", handleCourseRating);
+
+// enroll into a course
+coursesManageRouter.post("/enroll",handleCreateCourseEnrollment)
+
+// get all popular courses
+coursesManageRouter.get("/all/popular", handleGetPopularCourses);
+
+// get specific post
+coursesManageRouter.get("/all/:id",handleGetSpecificCourse)
+
+// get recommended course, AI and based on user skills
+coursesManageRouter.post("/all/recommended/:userId",handleGetRecommendedCourse)
+
+// get pdf resources
+coursesManageRouter.get("/all/pdf/resources",handleGetPDFResources)
+
+// get enrolled courses
+coursesManageRouter.get("/all/enrolled/:userId",handleGetUserEnrolledCourses)
+
+// get course certs done by the user
+coursesManageRouter.get("/all/certs/:userId",handleGetUserCerts)
+
+
+// INSTRUCTOR ROUTE
+
+coursesManageRouter.get("/all/instructor/:userId", handleGetInstructorCourses);
 
 // edit post
-coursesManageRouter.patch("/edit/:id", handleUpdateCourse);
+coursesManageRouter.put("/all/instructor/update/:id", handleUpdateCourse);
 
 // delete post
-coursesManageRouter.delete("/delete/:id", handleDeleteCourse);
+coursesManageRouter.delete("/all/delete/instructor/:userId/:courseId", handleDeleteCourse);
+
+

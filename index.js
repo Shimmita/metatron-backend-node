@@ -13,6 +13,7 @@ import {
   handleAuthMiddleware
 } from "./middlewares/auth_middleware.js";
 import authenticationRouter from "./routes/authentication_route.js";
+import manageCertVerifyRoute from "./routes/manage_cert_verify_route.js";
 import manageChatAiRoute from "./routes/manage_chat_route.js";
 import manageConnectRequestRoute from "./routes/manage_connect_route.js";
 import manageConversationsRoute from "./routes/manage_converse_route.js";
@@ -26,6 +27,7 @@ import {
   manageJobsRouter
 } from "./routes/manage_jobs_route.js";
 import manageNetworkRoute from "./routes/manage_network_route.js";
+import manage_payment_route from "./routes/manage_payment_route.js";
 import {
   postManageRouter
 } from "./routes/manage_post_route.js";
@@ -133,6 +135,12 @@ app.use(`${BASE_ROUTE}/insights`, handleAuthMiddleware, managePlatformInsights);
 // premium route
 app.use(`${BASE_ROUTE}/premium`, handleAuthMiddleware, manage_premium_route);
 
+// payment route
+app.use(`${BASE_ROUTE}/payment`, handleAuthMiddleware, manage_payment_route);
+
+
+// certificate verification route, doesn't require auth middleware
+app.use(`${BASE_ROUTE}/certificate`, manageCertVerifyRoute);
 
 // signOut user
 app.use(`${BASE_ROUTE}/signout`, (req, res) => {

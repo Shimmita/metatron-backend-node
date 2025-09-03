@@ -7,6 +7,7 @@ import {
   handleDeleteJobPostHiring,
   handleDeleteMyJobApplication,
   handleDownloadDocumentHiring,
+  handleDownloadMyCV,
   handleGetAllJobFeedBack,
   handleGetAllJobs,
   handleGetAllJobsHiring,
@@ -22,7 +23,8 @@ import {
   handleJobApplication,
   handleUpdateEntireJobHiring,
   handleUpdateJobApplicationStatusHiring,
-  handleUpdateJobStatusHiring
+  handleUpdateJobStatusHiring,
+  handleUploadingUserCV
 } from "../controllers/manage_jobs_controller.js";
 // set up multer for file uploads cloudinary
 const uploadMulter = multer({ storage: multer.memoryStorage() });
@@ -34,9 +36,18 @@ export const manageJobsRouter = express.Router();
 // apply for new job from the posted
 manageJobsRouter.post(
   "/application/apply",
-  uploadMulter.single("file"),
   handleJobApplication
 );
+
+// handle uploading of user cv
+manageJobsRouter.post(
+  "/cv/upload/:userId",
+  uploadMulter.single("file"),
+  handleUploadingUserCV
+);
+
+// handle user viewing or downloading their cv
+manageJobsRouter.post("/cv/my/download/",handleDownloadMyCV)
 
 // handle searching of the jobs
 manageJobsRouter.post("/all/search/:userId", handleGetAllJobsSearch);
@@ -71,6 +82,11 @@ manageJobsRouter.get("/all/verified/:userId", handleGetVerifiedJobs);
 // get specific job
 manageJobsRouter.get("/all/:id", handleGetSpecificJobPost);
 
+
+// user deletes their job application, must purge the uploaded documents in the cloud
+manageJobsRouter.delete("/all/delete/my/application/:userId/:gender/:jobAppID",handleDeleteMyJobApplication)
+
+
 // HIRING MANAGER
 
 //create jobs route
@@ -99,10 +115,6 @@ manageJobsRouter.delete("/all/hiring/job/delete/:emailId/:jobId", handleDeleteJo
 
 // download the cv of the user, it will create a signedURL and sent to the frontend
 manageJobsRouter.post("/all/download/cv/:emailId/:jobId", handleDownloadDocumentHiring);
-
-// user deletes their job application, must purge the uploaded documents in the cloud
-manageJobsRouter.delete("/all/delete/my/application/:userId/:jobAppID",handleDeleteMyJobApplication)
-
 
 
 

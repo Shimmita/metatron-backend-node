@@ -1,6 +1,7 @@
 import {
   createClient
 } from "@supabase/supabase-js";
+import mongoose from "mongoose";
 import sharp from "sharp";
 import JobFeedBackModal from "../model/JobFeedBackModal.js";
 import JobPostModel from "../model/JobPostModel.js";
@@ -492,10 +493,39 @@ export const handleDeleteJobPostHiring = async (req, res) => {
 }
 
 
-// download the cv of the user
+// download user cv by the owners
+export const handleDownloadMyCV=async(req,res)=>{
+  try {
+    // extract cvName passed in the params
+    const {cvName}=req?.body 
+    if (!cvName) {
+      throw new Error("cvName missing in the body request")
+    }
 
+    // supabase operation to get the signed url that lasts for 60 seconds
+    const {
+      data,
+      error
+    } = await SUPABASE.storage.from(SUPABASE_BUCKET).createSignedUrl(cvName, 60);
+
+    // error 
+    if (error) throw new Error(error);
+
+    // send the signed url back to the frontend
+    res.status(200).send(data.signedUrl);
+
+  } catch (error) {
+     // debug
+    console.log(error)
+
+    // send error response to the client
+    res.status(400).send(error?.message)
+  }
+}
+
+// download the cv of the user by the hiring manager
 export const handleDownloadDocumentHiring = async (req, res) => {
-  // extract userId passed in the params
+  // extract emailId and jobId passed in the params
   const {
     emailId,
     jobId
@@ -546,15 +576,16 @@ export const handleDownloadDocumentHiring = async (req, res) => {
 // handle delete my job application
 export const handleDeleteMyJobApplication = async (req, res) => {
 
+  try {
+
+
   // extract userId passed in the params
   const {
     userId,
-    jobAppID
+    jobAppID,
+    gender,
   } = req?.params || {}
 
-
-
-  try {
 
     // fetch an exact match in jobs applied by user model such that
     // the userId =>applicantID and jobAppID =>jobID
@@ -566,19 +597,48 @@ export const handleDeleteMyJobApplication = async (req, res) => {
       }],
     })
 
+      // update the target job its respective applicants info.
+      const jobTarget = await JobPostModel.findById(jobAppID);
+
+      // reject the application process
+      if (!jobTarget) {
+        throw new Error("job does not exist");
+      }
+
+
     // job not exist
     if (!jobApplication) {
       throw new Error("something went wrong, application not found!")
     }
 
-    // extract the name of the cv from the jobApplication
-    const cvName = jobApplication.cvName
+    // reduce the number of applicants and the gender of the user too
+    
+      let {
+        total,
+        male,
+        female,
+        other
+      } = jobTarget.applicants;
 
-    // Delete file from Supabase
-    const {
-      error
-    } = await SUPABASE.storage.from(SUPABASE_BUCKET).remove([cvName]);
-    if (error) throw new Error(error);
+      if (total>0||male>0||female>0||other>0) {
+        // decrement total
+        jobTarget.applicants.total = total - 1;
+
+      // decrement male, female and other counts
+      if (gender === "Male") {
+        // male
+        jobTarget.applicants.male = male - 1;
+      } else if (gender === "Female") {
+        // female
+        jobTarget.applicants.female = female - 1;
+      } else {
+        // other gender
+        jobTarget.applicants.other = other - 1;
+      }
+      }
+
+      // save the target and updated job results
+      await jobTarget.save();
 
     //  delete in mongodb the metadata
     await JobsAppliedModel.findOneAndDelete({
@@ -711,7 +771,10 @@ export const handleGetMyJobStats = async (req, res) => {
 
 // handle getting of the recommended jobs
 export const handleGetRecommended = async (req, res) => {
-  // extract userId passed in the params
+
+  try {
+
+      // extract userId passed in the params
   const {
     userId
   } = req?.params || {}
@@ -719,7 +782,7 @@ export const handleGetRecommended = async (req, res) => {
   // extract skills of the user from the body request
   const job_skills = req?.body
 
-  try {
+  
 
     // Validate job skills array
     if (!Array.isArray(job_skills)) {
@@ -956,7 +1019,11 @@ export const handleGetVerifiedJobs = async (req, res) => {
 
 // handle getting of the nearby jobs=country of the user
 export const handleGetNearbyJobs = async (req, res) => {
-  // extract userId passed in the params
+ 
+
+  try {
+
+ // extract userId passed in the params
   const {
     userId
   } = req?.params || {}
@@ -966,7 +1033,6 @@ export const handleGetNearbyJobs = async (req, res) => {
     country
   } = req.body || {};
 
-  try {
     const allJobs = await JobPostModel.find({
       "location.country": {
         $regex: country,
@@ -1164,6 +1230,7 @@ export const handleGetAllJobsSearch = async (req, res) => {
   }
 };
 
+
 // get specific post or one post
 export const handleGetSpecificJobPost = async (req, res) => {
   try {
@@ -1180,57 +1247,112 @@ export const handleGetSpecificJobPost = async (req, res) => {
 };
 
 
-
-// handle job application. cloud is supabase for CV and Cover letter
-export const handleJobApplication = async (req, res) => {
-
+// handle uploading of the user cv
+export const handleUploadingUserCV=async(req,res)=>{
   try {
-    // extract the post object from the form data passed as body from frontend
-    const dataBody = JSON.parse(req?.body.jobItem);
-    // file extract
-    const file = req?.file;
-    // will be used to update the main job respective values
-    const jobID = dataBody?.jobID;
-    // gender extract
-    const gender = dataBody?.applicant?.gender?.trim()?.toLowerCase();
+    // get userId from params
+    const userId = new mongoose.Types.ObjectId(req?.params.userId)
 
-    //   check if user has file
+    // fetch user from the db
+    const user=await personalModel.findById(userId,{password:0})
+
+if (!user) {
+      throw new Error("user does not exist!")
+    }
+
+    // get file 
+    const file=req?.file
+
+    // file,cv present
     if (file) {
-      const {
-        file
-      } = req;
-      const {
-        originalname,
-        buffer
-      } = file;
 
-      // cv file name with date preceding
-      const finalDocumentUploadedName = `${Date.now()}-${originalname}`
-      // Upload to Supabase folder jobs
-      const {
-        data,
-        error
-      } = await SUPABASE.storage
-        .from(SUPABASE_BUCKET)
-        .upload(finalDocumentUploadedName, buffer, {
-          cacheControl: "5000",
-          upsert: true,
-          contentType: 'application/pdf'
-        });
+      // check if user has previous file, delete it
+      if (user.cvLink.length>2) {
+        await SUPABASE.storage.from(SUPABASE_BUCKET).remove([user?.cvLink]);
+      }
+        
 
-      // error encountered during file upload
+    const {originalname,buffer} = file;
+
+    // cv file name with date preceding
+    const finalDocumentUploadedName = `${Date.now()}-${originalname}`
+    
+    // Upload to Supabase folder jobs
+    const {
+      error
+    } = await SUPABASE.storage
+      .from(SUPABASE_BUCKET)
+      .upload(finalDocumentUploadedName, buffer, {
+        cacheControl: "5000",
+        upsert: true,
+        contentType: 'application/pdf'
+      });
+
+       // error encountered during file upload
       if (error) {
         throw new Error(error.message);
       }
 
+      // update the user cv link in their profile
+      user.cvLink=finalDocumentUploadedName
+
+      // cv user updated, cv link
+      await user.save()
+
+    // update any previously made apps by the user to reflect latest cv
+    const userApplications=await JobsAppliedModel.find({"applicant.applicantID":userId})
+
+    // loop through user applications and update the cvName to reflect latest changes
+    for (const element of userApplications) {
+      element.cvName=finalDocumentUploadedName
+      await element.save()
+    }
+  
+    }else{
+      throw new Error("please attach C.V!")
+    }
+
+    // send updated user with latest cv link to the frontend
+    res.status(200).send(user)
+
+  } catch (error) {
+    // debug
+   console.log(error);
+  //  send error to the client
+    res.status(400).send(`woops ${error.message}!`);
+  }
+}
+
+// handle job application. cloud is supabase for CV and Cover letter
+export const handleJobApplication = async (req, res) => {
+  // the maximum no of applicants per job
+  const MAX_APPLICANTS=500
+
+  try {
+    // extract the data from the body
+    const dataBody = req?.body
+    // file extract
+    const file = req?.file;
+    // will be used to update the main job respective values
+    const jobID = new mongoose.Types.ObjectId(dataBody?.jobID);
+    
+    // gender extract
+    const gender = dataBody?.applicant?.gender?.trim()?.toLowerCase();  
+
       // update the target job its respective applicants info.
-      const jobTarget = await JobPostModel.findById({
-        _id: jobID
-      });
+      const jobTarget = await JobPostModel.findById(jobID);
 
       // reject the application process
       if (!jobTarget) {
         throw new Error("job does not exist");
+      }
+
+      // if max applicants reject
+      if (
+        jobTarget.applicants.total>jobTarget.applicants_max ||
+        jobTarget.applicants.total>MAX_APPLICANTS
+        ) {
+        throw new Error('job no longer accepts applications, wait for the recruiter to update status!')
       }
 
       // update the details of applicants present in the job attribute
@@ -1258,15 +1380,10 @@ export const handleJobApplication = async (req, res) => {
       await jobTarget.save();
 
       //save the application job request in the database
-      await JobsAppliedModel.create({
-        ...dataBody,
-        cvName: finalDocumentUploadedName,
-      });
-      res.status(200).send("application successful");
-    } else {
-      //revoke job application, user must provide a cv
-      throw new Error("please provide your cv");
-    }
+      await JobsAppliedModel.create(dataBody);
+
+      res.status(200).send("application done!");
+    
   } catch (error) {
     console.log(error);
     res.status(400).send(`woops ${error.message}!`);

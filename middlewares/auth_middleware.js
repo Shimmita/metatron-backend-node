@@ -1,9 +1,18 @@
 export function handleAuthMiddleware(req, res, next) {
-  if (req.session.isOnline) {
-    // continue with the request
-    next();
-  } else {
-    // halt the request, user session expired, need to login
-    res.status(400).send({ login: true, message: "user session expired!" });
+
+  try {
+    // checks if user is online in the session
+    const {isOnline}=req.session
+
+    // not online
+    if (!isOnline) {
+      throw new Error('user session expired')
+    }
+
+   // continue with the request
+    next()
+  } catch (error) {
+     res.status(400).send({ login: true, message: "user session expired!" });
   }
+
 }

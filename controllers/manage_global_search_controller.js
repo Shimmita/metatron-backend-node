@@ -1,6 +1,7 @@
 import AddEventModel from "../model/AddEventModel.js";
 import JobPostModel from "../model/JobPostModel.js";
 import personalModel from "../model/personalModel.js";
+import PostCourseModel from "../model/PostCourseModel.js";
 import TechPostModel from "../model/TechPostModel.js";
 
 // search for global results
@@ -83,20 +84,38 @@ export const handleGetGlobalSearchResults = async (req, res) => {
         ],
     };
 
+    // search courses
+         const coursesQuery = {
+      $or: [
+        { course_title: regex },
+         { "course_category.main": regex },
+         { "course_category.sub1": regex },
+         { "course_category.sub2": regex },
+         { "course_category.sub3": regex },
+         { "course_category.sub4": regex },
+         { "course_instructor.instructorName": regex },
+         { "course_instructor.instructorTitle": regex },
+         { course_description: regex },
+        ],
+    };
+
     // Run all queries in parallel
-    const [users,jobs,posts,events] = await Promise.all([
+    const [users,jobs,posts,events,courses] = await Promise.all([
       personalModel.find(usersQuery),
       JobPostModel.find(jobsQuery),
       TechPostModel.find(postsQuery),
-      AddEventModel.find(eventsQuery)
+      AddEventModel.find(eventsQuery),
+      PostCourseModel.find(coursesQuery)
     ]);
+
 
     // Format response
     const response = {
       users: { count: users.length, data: users },
       jobs: { count: jobs.length, data: jobs },
       posts: { count: posts.length, data: posts },
-      events:{count:events.length,data:events}
+      events:{count:events.length,data:events},
+      courses:{count:courses.length,data:courses}
     };
 
     // send response to the frontend

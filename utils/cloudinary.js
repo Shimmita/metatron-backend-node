@@ -103,7 +103,7 @@ export const deleteVideoFromCloudinary = (publicId) => {
 // delete image from cloudinary
 export const deleteFromCloudinary = (publicId) => {
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.destroy(publicId, (error, result) => {
+    cloudinary.uploader.destroy(publicId, {resource_type:'image'}, (error, result) => {
       if (error) reject(new Error("delete operation failed"));
       else resolve(result);
     });

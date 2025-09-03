@@ -187,6 +187,7 @@ export const handleGetSearchingUser = async (req, res) => {
   }
 };
 
+
 // handle getting of all profile views targeting specific user
 export const handleGettingProfileViews = async (req, res) => {
   // const userID from params

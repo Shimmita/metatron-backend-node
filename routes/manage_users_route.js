@@ -5,7 +5,7 @@ import {
   handleGetSpecificUser,
   handleGettingProfileViews,
   handleGetUserIsOnline,
-  handleUserUpdateDetails,
+  handleUserUpdateDetails
 } from "../controllers/manage_users_controller.js";
 
 import multer from "multer";

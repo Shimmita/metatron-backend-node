@@ -111,6 +111,11 @@ const jobSchema = new mongoose.Schema({
     required: [true, "monthly salary range in KES or USD is required"],
   },
 
+  applicants_max: {
+    type: Number,
+    default: 500,
+    },
+
   location: {
     country: {
       type: String,

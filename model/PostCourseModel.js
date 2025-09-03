@@ -133,26 +133,52 @@ const courseModel = new mongoose.Schema({
     default: 0
   },
 
+   price: {
+    type: Number,
+    required: false,
+    default:1.2
+  },
+
   student_count: {
     type: Number,
     required: false,
     default: 0
   },
+  
+  
+  // temp attributes section, affected by auth user 
+  // temporary user enrolled status
+  currentUserEnrolled: {
+    type: Boolean,
+    required: false,
+    default: false
+  },
 
-  course_liked: {
-    clicks: {
-      type: Number,
-      required: false,
-      default: 0
-    },
+  // for tracking user rating status, individually
+  currentUserRating: {
+    type: Number,
+    required: false,
+    default: 0
+  },
 
-    clickers: {
-      type: [String],
-      required: false,
-      default: [],
-      _id: false
-    },
-    _id: false,
+  // tracking if user certified in the course
+  currentUserCertified:{
+    type:Boolean,
+    required:false,
+    default:false
+  },
+
+  // for tracking user certificate ID if they certified
+   currentCertId:{
+    type:String,
+    required:false,
+    default:""
+  },
+
+  // for tracking user cert date of issue
+   currentCertDate:{
+    type:Date,
+    required:false,
   },
 
 }, {

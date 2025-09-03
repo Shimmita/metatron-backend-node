@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema(
       required: [true, "Name is required"],
       trim: true,
     },
+    
     email_verified:{
       type:Boolean,
       required:false,
@@ -18,9 +19,10 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
-    course: {
+    cvLink: {
       type: String,
       required: false,
+      default:'',
       trim: true,
     },
     country: {
@@ -55,7 +57,7 @@ const userSchema = new mongoose.Schema(
       "Bachelors Degree",
       "Masters Degree",
       "Doctorate Degree"
-               ],
+              ],
         message:
           "Invalid education level, should be Diploma, Bachelors, Masters or PhD",
       },

@@ -1,21 +1,6 @@
 import mongoose from "mongoose";
 
 
-// applicant schema : applicantId=>certId
-const certApplicantSchema=new mongoose.Schema({
-    applicantId:{
-        type:String,
-        required:true,
-        default:""
-    },
-
-    certId:{
-        type:String,
-        required:true
-    },
-    _id: false, 
-})
-
 // main course certificate model
 const CourseCertsModel = new mongoose.Schema(
   {
@@ -25,9 +10,27 @@ const CourseCertsModel = new mongoose.Schema(
     trim: true,
     },
 
+    studentId: {
+    type: String,
+    required: [true, "studentId is required"],
+    trim: true,
+    },
+
+    studentName: {
+    type: String,
+    required: [true, "student name is required"],
+    trim: true,
+    },
+
     instructorId: {
     type: String,
     required: [true, "instructorId is required"],
+    trim: true,
+    },
+
+    instructorName: {
+    type: String,
+    required: [true, "instructor name is required"],
     trim: true,
     },
 
@@ -37,11 +40,25 @@ const CourseCertsModel = new mongoose.Schema(
     trim: true,
     },
 
-    applicants:{
-    type:[certApplicantSchema],
-    required:true,
-    default:[],
-    }
+   price: {
+    type: Number,
+    required: false,
+    default: 0
+  },
+
+
+  payer_name: {
+    type: String,
+    required: [true, "payer name is required"],
+    trim: true,
+  },
+
+   status: {
+    type: String,
+    required: [true, "transaction status is required"],
+    trim: true,
+    },
+
     
   },
   {
