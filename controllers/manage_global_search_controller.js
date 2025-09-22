@@ -1,4 +1,5 @@
 import AddEventModel from "../model/AddEventModel.js";
+import GroupCommunityModel from "../model/GroupCommunityModel.js";
 import JobPostModel from "../model/JobPostModel.js";
 import personalModel from "../model/personalModel.js";
 import PostCourseModel from "../model/PostCourseModel.js";
@@ -99,13 +100,22 @@ export const handleGetGlobalSearchResults = async (req, res) => {
         ],
     };
 
+    // groups query
+        const groupsQuery = {
+      $or: [
+        { name: regex },
+        ],
+    };
+
+
     // Run all queries in parallel
-    const [users,jobs,posts,events,courses] = await Promise.all([
+    const [users,jobs,posts,events,courses,groups] = await Promise.all([
       personalModel.find(usersQuery),
       JobPostModel.find(jobsQuery),
       TechPostModel.find(postsQuery),
       AddEventModel.find(eventsQuery),
-      PostCourseModel.find(coursesQuery)
+      PostCourseModel.find(coursesQuery),
+      GroupCommunityModel.find(groupsQuery,{name:1})
     ]);
 
 
@@ -115,7 +125,8 @@ export const handleGetGlobalSearchResults = async (req, res) => {
       jobs: { count: jobs.length, data: jobs },
       posts: { count: posts.length, data: posts },
       events:{count:events.length,data:events},
-      courses:{count:courses.length,data:courses}
+      courses:{count:courses.length,data:courses},
+      groups:{count:groups.length,data:groups},
     };
 
     // send response to the frontend

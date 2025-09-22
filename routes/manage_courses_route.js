@@ -11,6 +11,7 @@ import {
   handleGetPDFResources,
   handleGetPopularCourses,
   handleGetRecommendedCourse,
+  handleGetSimilarCourses,
   handleGetSpecificCourse,
   handleGetUserCerts,
   handleGetUserEnrolledCourses,
@@ -44,6 +45,9 @@ coursesManageRouter.post("/enroll",handleCreateCourseEnrollment)
 
 // get all popular courses
 coursesManageRouter.get("/all/popular", handleGetPopularCourses);
+
+// get all similar courses
+coursesManageRouter.get("/all/similar/:userId/:courseId", handleGetSimilarCourses);
 
 // get specific post
 coursesManageRouter.get("/all/:id",handleGetSpecificCourse)

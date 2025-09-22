@@ -1,5 +1,7 @@
 import app from "express";
 import {
+  handleCloseTutorial,
+  handleCloseTutorialGroups,
   handleDeleteProfileView,
   handleGetSearchingUser,
   handleGetSpecificUser,
@@ -31,7 +33,11 @@ manageUsersRoute.get("/all/online/:userID", handleGetUserIsOnline);
 // for searching users from the frontend during typing for autocomplete
 manageUsersRoute.get("/all/search/result/user", handleGetSearchingUser);
 
+// update the tutorial status
+manageUsersRoute.post("/all/tutorial",handleCloseTutorial)
 
+// update no show tutorial groups and communities
+manageUsersRoute.post("/all/tutorial/groups",handleCloseTutorialGroups)
 
 // manage updating of the user details: phone,expertise,skills,location, about
 manageUsersRoute.put(

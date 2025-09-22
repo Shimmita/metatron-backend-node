@@ -12,6 +12,7 @@ import {
   handleGetAllJobs,
   handleGetAllJobsHiring,
   handleGetAllJobsSearch,
+  handleGetExternalJobs,
   handleGetJobApplicantsHiring,
   handleGetMyJobApplications,
   handleGetMyJobStats,
@@ -52,7 +53,7 @@ manageJobsRouter.post("/cv/my/download/",handleDownloadMyCV)
 // handle searching of the jobs
 manageJobsRouter.post("/all/search/:userId", handleGetAllJobsSearch);
 
-// handle getting of the top Jobs the latest 3 from the database
+// handle getting of the top Jobs the latest 4 from the database
 manageJobsRouter.get("/all/top/:userId", handleGetTopJobs);
 
 // getting of job feedback
@@ -78,6 +79,9 @@ manageJobsRouter.get("/all/:userId", handleGetAllJobs);
 
 // get verified jobs
 manageJobsRouter.get("/all/verified/:userId", handleGetVerifiedJobs);
+
+// get external jobs, jobs with external links
+manageJobsRouter.get("/all/external/:userId", handleGetExternalJobs);
 
 // get specific job
 manageJobsRouter.get("/all/:id", handleGetSpecificJobPost);

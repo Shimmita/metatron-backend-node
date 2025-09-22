@@ -278,7 +278,7 @@ export const handleGetTopUsersToConnect = async (req, res) => {
     // Map network IDs to ObjectId. Exclude also current user ID as ObjectId
     const excludedIds = [
       new mongoose.Types.ObjectId(userId),
-      ...currentUserNetwork.map((id) => new mongoose.Types.ObjectId(id)),
+      ...currentUserNetwork?.map((id) => new mongoose.Types.ObjectId(id)),
     ];
 
     // Return users not in the network and exclude the current owner ID

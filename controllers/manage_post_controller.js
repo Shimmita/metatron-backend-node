@@ -1,3 +1,4 @@
+import GroupCommunityModel from "../model/GroupCommunityModel.js";
 import personalModel from "../model/personalModel.js";
 import PostFavorites from "../model/PostFavorites.js";
 import {
@@ -23,6 +24,9 @@ export const handleCreateNewPost = async (req, res) => {
     // extract the post object from the form data passed as body from frontend
     const data = JSON.parse(req?.body.post);
 
+    // group name for saving the name of the post in the respective group
+    const {group:groupName}=data
+
     //   check if user has file
     if (req?.file) {
       // Compress and convert the image to AVIF format
@@ -38,15 +42,58 @@ export const handleCreateNewPost = async (req, res) => {
       const post_url = result.secure_url;
       const post_url_id = result.public_id;
 
-      await TechPostModal.create({
+      // create new post
+      const post=await TechPostModal.create({
         ...data,
         post_url,
         post_url_id
       });
+
+      // update the post in the groups if any
+      if (groupName && groupName!==" ") {
+        // search from db the group with matching name
+        const tempGroup= await GroupCommunityModel.findOne({name:groupName})
+        // group not found
+        if (!tempGroup) {
+          return
+        }
+
+        // increment the counter
+        tempGroup.post_count=tempGroup.post_count+1
+
+        // add the id of the post into the attribute posts of the group
+        tempGroup.posts=[...tempGroup.posts,post.id]
+
+        // save the updated group details
+        await tempGroup.save()
+
+      }
+
       res.status(200).send("post uploaded successfully");
     } else {
       // save the user they have no file
-      await TechPostModal.create(data);
+      const post=await TechPostModal.create(data);
+
+      // update the post in the groups if any
+      if (groupName && groupName!==" ") {
+        // search from db the group with matching name
+        const tempGroup= await GroupCommunityModel.findOne({name:groupName})
+        // group not found
+        if (!tempGroup) {
+          return
+        }
+
+        // increment the counter
+        tempGroup.post_count=tempGroup.post_count+1
+
+        // add the id of the post into the attribute posts of the group
+        tempGroup.posts=[...tempGroup.posts,post.id]
+
+        // save the updated group details
+        await tempGroup.save()
+
+      }
+
       res.status(200).send("post uploaded successfully");
     }
   } catch (error) {

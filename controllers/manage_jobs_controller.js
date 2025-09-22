@@ -8,6 +8,7 @@ import JobPostModel from "../model/JobPostModel.js";
 import JobsAppliedModel from "../model/JobsAppliedModel.js";
 import personalModel from "../model/personalModel.js";
 import {
+  deleteFromCloudinary,
   uploadToCloudinary
 } from "../utils/cloudinary.js";
 
@@ -27,7 +28,7 @@ export const handleCreateJob = async (req, res) => {
     // extract the post object from the form data passed as body from frontend
     const data = JSON.parse(req?.body.job);
 
-    //   check if user has file
+    //   check if job has file
     if (req?.file) {
       // Compress and convert the image to AVIF format
       const compressedImageBuffer = await sharp(req.file.buffer)
@@ -55,7 +56,7 @@ export const handleCreateJob = async (req, res) => {
       });
       res.status(200).send("post upload successful");
     } else {
-      // save the user they have no file especially uploaded logo
+      // save job no file especially uploaded logo
       await JobPostModel.create(data);
 
       // fetch top 4 jobs and send to the frontend to update the top jobs,
@@ -95,9 +96,9 @@ export const handleGetAllJobs = async (req, res) => {
       .skip(skip)
       .limit(limit);
     // no more jobs posted
-    if (allJobs.length < 1) {
+    if (!allJobs.length) {
       throw new Error(
-        "currently there are no more jobs!"
+        "You have reached the end of job listings and currently there are no more jobs!"
       );
     }
 
@@ -128,9 +129,6 @@ export const handleGetAllJobs = async (req, res) => {
     res.status(200).send(checkedJobs);
 
   } catch (error) {
-    // debug
-    console.log(error);
-
     // send error to the frontend
     res.status(400).send(error.message);
   }
@@ -457,6 +455,12 @@ export const handleDeleteJobPostHiring = async (req, res) => {
     }
 
 
+    // check if logoId is present means job logo was uploaded to cloud, delete it
+    if (job.logoID || job.logo.includes("https:")) {
+      await deleteFromCloudinary(job.logoID)
+    }
+
+
     // loop in the jobsApplied model and locate those with the job Id
     // and update that isAvailable to false
     await JobsAppliedModel.updateMany({
@@ -468,19 +472,10 @@ export const handleDeleteJobPostHiring = async (req, res) => {
     // delete the job now
     await JobPostModel.findByIdAndDelete(jobId)
 
-    // fetch all jobs posted by the hiring manager 
-    // sort them the latest first
-    const allJobs = await JobPostModel.find({
-      my_email: emailId
-    })
-    .sort({
-      createdAt: -1
-    })
-    .limit(20);
-
 
     // send the status to the frontend
-    res.status(200).send(allJobs)
+    res.status(200).send('job deleted successfully')
+    
 
   } catch (error) {
 
@@ -657,7 +652,7 @@ export const handleDeleteMyJobApplication = async (req, res) => {
     console.log(error)
 
     // send error response to the client
-    res.status(400).send(error?.message)
+    res.status(400).send('something went wrong!')
   }
 
 }
@@ -872,7 +867,7 @@ export const handleGetTopJobs = async (req, res) => {
       .sort({
         createdAt: -1
       })
-      .limit(5);
+      .limit(3);
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.
@@ -979,10 +974,10 @@ export const handleGetVerifiedJobs = async (req, res) => {
       }],
     }).sort({
       createdAt: -1
-    });
+    }).limit(24);
     // no jobs posted
-    if (allJobs.length < 1) {
-      throw new Error("currently there are no jobs");
+    if (allJobs.length < 0) {
+      throw new Error("currently there are no jobs, when jobs are populated from recruiters this page will be ready.");
     }
 
     // fetch in the applied jobs, those containing the userId
@@ -1017,9 +1012,75 @@ export const handleGetVerifiedJobs = async (req, res) => {
   }
 };
 
+
+// handle getting of external jobs, jobs with external website
+export const handleGetExternalJobs = async (req, res) => {
+  // extract userId passed in the params
+  const {
+    userId
+  } = req?.params || {}
+
+
+  try {
+
+    // temp array for holding jobs with website
+    let allJobsWebsite=[]
+
+
+    const tempJobs = await JobPostModel.find({}).sort({
+      createdAt: -1
+    }).limit(24);
+
+    // no jobs posted
+    if (tempJobs.length < 0) {
+      throw new Error("currently there are no jobs, when jobs are populated from recruiters this page will be ready.");
+    }
+
+
+    // fetch in the applied jobs, those containing the userId
+    // will help to match if a particular top job is applied.
+    const jobsUserApplied = await JobsAppliedModel.find({
+      "applicant.applicantID": userId
+    }, {
+      applicant: 0,
+      cvLink: 0,
+      viewed: 0,
+      createdAt: 0,
+      updatedAt: 0
+    })
+
+
+    // loop through jobs, add to jobsWebsite if has website
+    for (const element of tempJobs) {
+      if (element.website.length>3) {
+        allJobsWebsite.push(element)
+      }
+    }
+
+
+    // updating the jobs if current user applied or not
+    let checkedJobs = allJobsWebsite.map((main_job) => {
+      for (const element of jobsUserApplied) {
+        if (main_job.id === element.jobID) {
+          main_job.currentUserApplied = true
+        }
+      }
+
+      return main_job
+    })
+
+    // jobs present
+    res.status(200).send(checkedJobs);
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).send("something went wrong");
+  }
+};
+
+
 // handle getting of the nearby jobs=country of the user
 export const handleGetNearbyJobs = async (req, res) => {
- 
 
   try {
 
@@ -1090,8 +1151,18 @@ export const handleGetAllJobsSearch = async (req, res) => {
 
   try {
     const {
-      job_titles = [], datePosted, country, entry, category
+      job_titles = [], 
+      datePosted,
+      country,
+      entry, 
+      category,
+      access,
     } = req.body || {};
+
+
+    let accessArray=[]
+    accessArray.push(access)
+
 
     // Validate job_titles array
     if (!Array.isArray(job_titles)) {
@@ -1103,8 +1174,8 @@ export const handleGetAllJobsSearch = async (req, res) => {
       $and: []
     };
 
-    // Handle job_titles search
-    if (job_titles.length > 0) {
+    // handle job_titles search
+    if (job_titles.length >= 0) {
       query.$and.push({
         $or: [
           ...job_titles.map((term) => ({
@@ -1170,7 +1241,7 @@ export const handleGetAllJobsSearch = async (req, res) => {
       }
     }
 
-    // Handle country filter
+    //  country filter
     if (country) {
       query.$and.push({
         "location.country": {
@@ -1180,7 +1251,7 @@ export const handleGetAllJobsSearch = async (req, res) => {
       });
     }
 
-    // Handle entry filter
+    // entry filter
     if (entry) {
       query.$and.push({
         "entry.level": {
@@ -1190,11 +1261,30 @@ export const handleGetAllJobsSearch = async (req, res) => {
       });
     }
 
+    // access
+    if (accessArray.length>=0) {
+       query.$and.push({
+        $or: [
+          ...accessArray.map((term) => ({
+            "jobtypeaccess.type": {
+              $regex: term,
+              $options: "i"
+            },
+          })),
+          ...accessArray.map((term) => ({
+            "jobtypeaccess.access": {
+                $regex: term,
+                $options: "i"
+            },
+          })),
+        ],
+      });
+
+    }
     // Fetch jobs from the database latest first on the search results
     const searchResults = await JobPostModel.find(query).sort({
       createdAt: -1,
     });
-
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.

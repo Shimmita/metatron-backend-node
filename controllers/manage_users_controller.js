@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
+import AddEventModel from "../model/AddEventModel.js";
 import personalModel from "../model/personalModel.js";
 import ProfileViewerModel from "../model/ProfileViewerModel.js";
 import TechPostModel from "../model/TechPostModel.js";
@@ -9,7 +10,6 @@ import {
 import {
   CompressImageFunction
 } from "../utils/compressImage.js";
-import AddEventModel from "../model/AddEventModel.js";
 
 
 // controls sending the request to the deployed Ai model for response
@@ -186,6 +186,70 @@ export const handleGetSearchingUser = async (req, res) => {
     res.status(400).send("something went wrong!");
   }
 };
+
+
+// handle closing of the tutorial states
+export const handleCloseTutorial=async(req,res)=>{
+  try {
+    // extract from the body request
+    const {userId}=req?.body || {}
+
+    // locate user in the db
+    const user=await personalModel.findById(userId)
+
+    // no user reject
+    if (!user) {
+      throw new Error("no user not found!")
+    }
+
+    // update the tutorial state
+    user.isTutorial=false
+
+    // save the user
+    await user.save()
+
+    // send success response
+    res.status(200).send(user)
+    
+  } catch (error) {
+    //debug
+    console.log(error.message)
+    res.status(400).send('something went wrong!')
+    // 
+  }
+}
+
+
+// handle close tutorial groups and communities on launch
+export const handleCloseTutorialGroups=async(req,res)=>{
+  try {
+    // extract from the body request
+    const {userId}=req?.body || {}
+
+    // locate user in the db
+    const user=await personalModel.findById(userId)
+
+    // no user reject
+    if (!user) {
+      throw new Error("no user not found!")
+    }
+
+    // update the tutorial groups state
+    user.isGroupTutorial=false
+
+    // save the user
+    await user.save()
+
+    // send success response
+    res.status(200).send(user)
+    
+  } catch (error) {
+    //debug
+    console.log(error.message)
+    res.status(400).send('something went wrong!')
+    // 
+  }
+}
 
 
 // handle getting of all profile views targeting specific user

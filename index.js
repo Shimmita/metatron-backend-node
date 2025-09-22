@@ -22,6 +22,7 @@ import {
 } from "./routes/manage_courses_route.js";
 import { eventsManageRouter } from "./routes/manage_events_route.js";
 import manageGlobalSearchRoute from "./routes/manage_global_search_route.js";
+import manageGroupCommunityRoute from "./routes/manage_group_route.js";
 import managePlatformInsights from "./routes/manage_insights_route.js";
 import {
   manageJobsRouter
@@ -46,14 +47,19 @@ app.use(
 
 // port for server
 const PORT = process.env.PORT || 5000;
+
 // base route
 const BASE_ROUTE = process.env.BASE_ROUTE;
+
+// environment
+const environment=process.env.ENVIRONMENT_MODE
 
 
 // init mongoDB
 mongoose
-  .connect(process.env.MONGO_CONNECTION_URI)
-  .then(() => console.log(" connected to mongo database"))
+  .connect(environment==="SANDBOX" ? process.env.MONGO_CONNECTION_URI:
+    process.env.MONGO_CONNECTION_URI_CLOUD)
+  .then(() => console.log(`connected to mongo database ${environment==="SANDBOX" ? "LOCAL":"CLOUD"}`))
   .catch((err) => console.log("database connection Failed ", err));
 
 // listening for requests
@@ -121,6 +127,9 @@ app.use(`${BASE_ROUTE}/network`, handleAuthMiddleware, manageNetworkRoute);
 
 // global search route
 app.use(`${BASE_ROUTE}/global`, handleAuthMiddleware, manageGlobalSearchRoute);
+
+// groups and communities route
+app.use(`${BASE_ROUTE}/groups`, handleAuthMiddleware, manageGroupCommunityRoute);
 
 // conversations
 app.use(

@@ -52,14 +52,15 @@ const userSchema = new mongoose.Schema(
       required: [true, "Education level is required"],
       enum: {
         values: [  
-      "Secondary School",
+      "High School Diploma",
       "Diploma Certificate",
+      "Associate Degree",
       "Bachelors Degree",
       "Masters Degree",
       "Doctorate Degree"
               ],
         message:
-          "Invalid education level, should be Diploma, Bachelors, Masters or PhD",
+          "Invalid education level, should be Certificate, Diploma, Bachelors, Masters or PhD",
       },
     },
     eduInstitution: {
@@ -120,10 +121,16 @@ const userSchema = new mongoose.Schema(
     premium: { type: Boolean, default: false },
     premiumOnce: { type: Boolean, default: false },
     isOnline: { type: Boolean, default: false },
-
+    isTutorial:{type:Boolean, default:true},
+    isGroupTutorial:{type:Boolean, default:true},
     network: { type: [mongoose.Types.ObjectId], default: [] },
     network_count: { type: Number, default: 0 },
     post_count: { type: Number, default: 0 },
+    groups:{
+      type:[String],
+      required:false,
+      default:[]
+    }
   },
   {
     timestamps: true,

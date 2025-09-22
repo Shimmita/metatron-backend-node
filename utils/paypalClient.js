@@ -4,10 +4,10 @@ import paypal from "@paypal/checkout-server-sdk";
 
 // ----------------------------
 // 3) PayPal environment helper
-//    Switches between Sandbox and Live based on PAYPAL_MODE
+//    Switches between Sandbox and Live based on ENVIRONMENT_MODE
 // ----------------------------
 function buildPayPalClient() {
-  const mode = (process.env.PAYPAL_MODE || "SANDBOX").toUpperCase();
+  const mode = (process.env.ENVIRONMENT_MODE || "SANDBOX").toUpperCase();
   const isLive = mode === "LIVE";
 
   const clientId = isLive

@@ -51,6 +51,13 @@ const ReportPostModal = new mongoose.Schema(
       default: "",
     },
 
+    reporter_link: {
+      type: String,
+      required: false,
+      trim: true,
+      default: "",
+    },
+
     report_title: {
       type: String,
       required: [true, " reporting about what is required"],

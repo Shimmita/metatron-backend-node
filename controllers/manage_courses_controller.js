@@ -271,6 +271,70 @@ export const handleGetAllCourses = async (req, res) => {
 };
 
 
+export const handleGetSimilarCourses = async (req, res) => {
+  try {
+    // extract userId
+    let {courseId,userId}=req?.params || {}
+
+    // check course presence
+    const courseItem=await PostCourseModel.findById(courseId)
+
+    if (!courseItem) {
+      throw new Error(
+      `Course not found, may be temporarily unavailable, 
+      deleted or wrong course Id passed!`)
+    }
+    
+    // get courseItem category main
+    const categoryMain=courseItem.course_category.main
+
+
+    // fetch all certificates that user has accredited
+     const userCertificates=await CourseCertsModel.find({studentId:userId}) 
+
+    // fetch all enrolled courses by the user
+    const enrolledCourses=await CourseEnrollmentModel.find({userId})
+
+    // retrieve all courses in order of latest first, 12 pagination step
+    const allCourses = await PostCourseModel.find({'course_category.main':categoryMain})
+      .sort({ createdAt: -1 })
+      .limit(12);
+
+    // results, after updating enrolled ones, also filter the course from results
+    const results=allCourses.filter(course=>course.id!==courseId).map(course=>{
+
+      // loop through enrolled courses against current course
+      for (const enrolledCourse of enrolledCourses) {
+        if (enrolledCourse.courseId===course.id) {
+          course.currentUserEnrolled=true
+          course.currentUserRating=enrolledCourse.userRating
+        }
+      }
+
+        // loop through user certificates against the current course
+      for (const certificate of userCertificates) {
+        if (certificate.courseId===course.id) {
+          course.currentUserCertified=true
+          course.currentCertId=certificate.id
+          course.currentCertDate=certificate.createdAt
+        }
+      }
+
+      return course
+    })
+    
+    // return update course results
+    res.status(200).send(results);
+  } catch (error) {
+    // debug
+    console.log(error.message)
+
+    // send error to the client
+    res.status(400).send(error.message);
+  }
+};
+
+
 // handle get popular courses, with higher rating
 export const handleGetPopularCourses=async(req,res)=>{
   // retrieve all courses in order of latest first
@@ -285,6 +349,8 @@ export const handleGetPopularCourses=async(req,res)=>{
     res.status(400).send(error.message);
   }
 }
+
+
 
 // get specific post or one post
 export const handleGetSpecificCourse = async (req,res) => {

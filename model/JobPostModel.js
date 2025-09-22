@@ -30,8 +30,8 @@ const jobSchema = new mongoose.Schema({
       type: String,
       required: [true, "job type is required"],
       enum: {
-        values: ["Contract", "Full-Time","Internship"],
-        message: "job type must be Contract,Full-Time or internship",
+        values: ["Contract", "Full-Time","Internship","Volunteer"],
+        message: "job type must be Contract,Full-Time, volunteer or internship",
       },
     },
 
@@ -109,6 +109,13 @@ const jobSchema = new mongoose.Schema({
     trim: true,
     default: "",
     required: [true, "monthly salary range in KES or USD is required"],
+  },
+
+  whitelist: {
+    type: String,
+    trim: true,
+    default: "",
+    required: [true, "job country whitelist required!"],
   },
 
   applicants_max: {

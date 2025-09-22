@@ -134,6 +134,11 @@ const postSchema = new mongoose.Schema({
       trim: true,
       default: ""
     },
+    sub4: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     _id: false,
   },
   post_location: {
@@ -210,6 +215,11 @@ const postSchema = new mongoose.Schema({
       required: false,
       default: 0
   },
+
+  group:{
+    type:String,
+    default:""
+  }
 
 }, {
   timestamps: true

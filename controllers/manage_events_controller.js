@@ -49,7 +49,7 @@ export const handleGetAllEvents=async(req,res)=>{
     .limit(limit)
 
     if (eventsData.length<1) {
-      throw new Error("currently there are no more events!")
+      throw new Error("You have reached the end of event listings and currently there are no more events!")
     }
     // send the response back to the frontend
     res.status(200).send(eventsData)

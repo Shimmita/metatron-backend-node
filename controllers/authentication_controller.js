@@ -15,7 +15,6 @@ import { generateResetCode } from "../utils/codeGenerator.js";
 const successMsg =
   "Your account has been created successfully pease login.";
 
-
 const handleSignupPersonal = async (req, res) => {
   // Get token from params
   const firebasetoken = req.params?.token;
