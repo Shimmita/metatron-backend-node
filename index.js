@@ -69,7 +69,8 @@ app.listen(PORT, () => {
 
 // Initialize mongoDB session for session storage
 const store = new mongoDBSession({
-  uri: process.env.MONGO_CONNECTION_URI,
+  uri: environment==="SANDBOX" ? process.env.MONGO_CONNECTION_URI:
+    process.env.MONGO_CONNECTION_URI_CLOUD,
   collection: process.env.SESSION_STORE_NAME,
 });
 
