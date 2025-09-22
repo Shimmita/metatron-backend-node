@@ -38,10 +38,12 @@ const mongoDBSession = connectMongoStore(session);
 const app = express();
 app.use(bodyParser.json());
 app.use(express.json());
-
-// allow origin from all temp for now
-app.use(cors({ origin: "*", credentials: true }));
-
+app.use(
+  cors({
+    origin: [process.env.CROSS_ORIGIN_ALLOWED],
+    credentials: true,
+  })
+);
 
 // port for server
 const PORT = process.env.PORT || 5000;
@@ -67,8 +69,7 @@ app.listen(PORT, () => {
 
 // Initialize mongoDB session for session storage
 const store = new mongoDBSession({
-  uri: environment==="SANDBOX" ? process.env.MONGO_CONNECTION_URI:
-    process.env.MONGO_CONNECTION_URI_CLOUD,
+  uri: process.env.MONGO_CONNECTION_URI,
   collection: process.env.SESSION_STORE_NAME,
 });
 
