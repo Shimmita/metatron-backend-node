@@ -12,7 +12,7 @@ export function handleAuthMiddleware(req, res, next) {
    // continue with the request
     next()
   } catch (error) {
-     res.status(400).send({ login: true, message: "user session expired!" });
+    res.status(400).send({ login: true, message: "user session expired!" });
   }
 
 }

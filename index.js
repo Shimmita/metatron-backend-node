@@ -74,6 +74,9 @@ const store = new mongoDBSession({
   collection: process.env.SESSION_STORE_NAME,
 });
 
+// for reverse proxy sites
+app.set("trust proxy", 1);
+
 // session initialization, session lasts 3 hrs
 app.use(
   session({
@@ -84,6 +87,8 @@ app.use(
     store,
     cookie: {
       maxAge: 60 * 60 * 24 * 1000,
+      secure: environment==="SANDBOX" ? false : true,
+      sameSite: environment==="SANDBOX" ? "lax" : "none",
     },
   })
 );
