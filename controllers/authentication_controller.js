@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import sharp from "sharp";
 import validator from "validator";
 import EmailVerificationSchema from "../model/EmailVerificationModel.js";
+import Brevo from '@getbrevo/brevo'
 import { default as PersonalModel, default as personalModel } from "../model/personalModel.js";
 import ResetCodeModal from "../model/ResetCodeModal.js";
 import {
@@ -208,152 +209,89 @@ const handleSignupPersonalMongo = async (req, res) => {
 
 // signin user to personal account no provider
 const handleSigninPersonal = async (req, res) => {
-  const {
-    email,
-    password
-  } = req?.body || {};
+   const { email, password } = req?.body || {};
 
   try {
-    // check if the provided email is valid like acceptable email
     if (!validator.isEmail(email)) {
       throw new Error("provided email is malformed!");
     }
 
-    // passwords must be at least 6 characters
     if (password.length < 6) {
       throw new Error("password must be 6 characters minimum!");
     }
-    const user = await PersonalModel.findOne({
-      email
-    });
-    // user does not exist
+
+    const user = await PersonalModel.findOne({ email });
     if (!user) {
-      throw new Error(
-        "create new account to access our services!"
-      );
+      throw new Error("create new account to access our services!");
     }
 
-    // user exists lets check the password provided against the one in the database
     if (await bcrypt.compare(password, user.password)) {
-      // check if user verified their email address or not and respond accordingly
       if (user.email_verified) {
-         // add the session user isOnline to true on every request that expires based on session time
-      req.session.isOnline = true;
-      // add the userId in the session will be used to check if they online or not based on session data
-      req.session.userID = user._id;
-      res.status(200).send(user);
-      }else{
-      // check for email verification records in the db, if exist then use the email_code and no generations
-      const emailVerificationRecords=await EmailVerificationSchema.findOne({email})
+        req.session.isOnline = true;
+        req.session.userID = user._id;
+        return res.status(200).send(user);
+      } else {
+        let emailVerificationRecords = await EmailVerificationSchema.findOne({ email });
+        let tempCode = emailVerificationRecords ? emailVerificationRecords.email_code : generateResetCode();
 
-      let tempCode="77388"
-
-      if (emailVerificationRecords) {
-        tempCode=emailVerificationRecords.email_code
-      }else{
-        tempCode=generateResetCode()
-      }
-
-        const htmlContent=`<html>
+        const htmlContent = `
+          <html>
             <head>
               <meta charset="utf-8">
               <title>Email Verification</title>
               <style>
-                body {
-                  font-family: sans-serif;
-                  line-height: 1.6;
-                  margin: 0;
-                  padding: 0;
-                  background-color: #f4f4f4;
-                }
-                .container {
-                  max-width: 600px;
-                  margin: 20px auto;
-                  padding: 20px;
-                  background-color: #fff;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-                }
-                h1 {
-                  color: #333;
-                }
-                .code {
-                  font-size: 24px;
-                  font-weight: bold;
-                  color: #007bff;
-                  margin-top: 20px;
-                  margin-bottom: 20px;
-                  text-align: center;
-                }
-                .note {
-                  font-size: 14px;
-                  color: #777;
-                }
-                .footer {
-                  margin-top: 20px;
-                  font-size: 12px;
-                  color: #999;
-                  text-align: center;
-                }
+                body { font-family: sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #fff;
+                  border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
+                h1 { color: #333; }
+                .code { font-size: 24px; font-weight: bold; color: #007bff; margin: 20px 0; text-align: center; }
+                .note { font-size: 14px; color: #777; }
+                .footer { margin-top: 20px; font-size: 12px; color: #999; text-align: center; }
               </style>
             </head>
             <body>
               <div class="container">
                 <h1>Email Verification</h1>
-                <p>
-                  Thank you for signing up! Please use the verification code below to confirm your email address:
-                </p>
+                <p>Thank you for signing up! Please use the verification code below to confirm your email address:</p>
                 <div class="code">${tempCode}</div>
-                <p class="note">
-                  This code is valid for a limited time. If you did not request this, please ignore this email.
-                </p>
-                <div class="footer">
-                  © ${new Date().getFullYear()} Metatron. All rights reserved.
-                </div>
+                <p class="note">This code is valid for a limited time. If you did not request this, please ignore this email.</p>
+                <div class="footer">© ${new Date().getFullYear()} Metatron. All rights reserved.</div>
               </div>
             </body>
-           </html>`
+          </html>
+        `;
 
-       
-        let emailSubject="Metatron Email Verification Code"
+        let emailSubject = "Metatron Email Verification Code";
 
-        // creating a transporter
-         const transporter = nodemailer.createTransport({
-            host: process.env.BREVO_HOST,
-            port: 587, // Or 465 for secure SSL/TLS
-            secure: false, // true for 465, false for other ports
-            auth: {
-            user: process.env.BREVO_SMTP_LOGIN, 
-            pass: process.env.BREVO_SMTP_KEY
-            }
-        });
+        // --- Brevo SDK setup ---
+        let apiInstance = new Brevo.TransactionalEmailsApi();
+        let apiKey = apiInstance.authentications["apiKey"];
+        // Your Brevo API Key
+        apiKey.apiKey = process.env.BREVO_API_KEY; 
 
-        // mail options
-          const mailOptions = {
-            from: process.env.BREVO_FROM, 
-            to: email, 
-            subject:emailSubject,
-            html: htmlContent
-        };
+        let sendSmtpEmail = new Brevo.SendSmtpEmail();
+        sendSmtpEmail.subject = emailSubject;
+        sendSmtpEmail.htmlContent = htmlContent;
+        sendSmtpEmail.sender = { name: "Metatron", email: process.env.BREVO_FROM };
+        sendSmtpEmail.to = [{ email }];
 
-        // save the email code in the database, if exists it will throw error
-        await EmailVerificationSchema.create({ email, email_code: tempCode });
-        
-         // sending the email
-        transporter.sendMail(mailOptions);
+        // Save verification code in DB (replace old record if exists)
+        await EmailVerificationSchema.findOneAndUpdate(
+          { email },
+          { email_code: tempCode },
+          { upsert: true, new: true }
+        );
 
-        // user not verified their email, though passed signin test,send email to the frontend as response
-        res.status(200).send(user.email)
-}
-    
+        // Send email
+        await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+        return res.status(200).send(user.email);
+      }
     } else {
-      // incorrect password
       throw new Error("incorrect login credentials!");
     }
   } catch (error) {
-    // debug error
-    console.log(error.message)
-    // send the error to the frontend
+    console.log(error.message);
     res.status(400).send(error.message);
   }
 };
@@ -541,7 +479,7 @@ export const handleResetCodeRequest=async(req,res)=>{
     
   } catch (error) {
     // debug
-    console.log(error.message)
+    console.log(error)
     res.status(400).send(error.message)
   }
 }
