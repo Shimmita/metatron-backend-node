@@ -166,15 +166,8 @@ const handleSignupPersonalMongo = async (req, res) => {
     const hashedpass = await bcrypt.hash(password, 10);
 
     if (!req.file) {
-      // save user without avatar
-      await PersonalModel.create({
-        ...user,
-        password: hashedpass,
-      });
-
-      await res.status(200).send({
-        message: successMsg,
-      });
+      // user must provide an image or avatar
+      throw new Error('please provide an image or avatar for your profile!')
     } else {
       // save user with an avatar
       // Compress and convert the image to AVIF format
@@ -183,7 +176,7 @@ const handleSignupPersonalMongo = async (req, res) => {
           width: 500
         }) // Resize to a max width of 500px
         .toFormat("avif", {
-          quality: 80
+          quality: 70
         }) // Convert to AVIF with 80% quality
         .toBuffer();
 

@@ -53,7 +53,7 @@ manageJobsRouter.post("/cv/my/download/",handleDownloadMyCV)
 // handle searching of the jobs
 manageJobsRouter.post("/all/search/:userId", handleGetAllJobsSearch);
 
-// handle getting of the top Jobs the latest 4 from the database
+// handle getting of the top Jobs the latest 3-4 from the database
 manageJobsRouter.get("/all/top/:userId", handleGetTopJobs);
 
 // getting of job feedback

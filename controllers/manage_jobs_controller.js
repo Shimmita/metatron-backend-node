@@ -95,12 +95,6 @@ export const handleGetAllJobs = async (req, res) => {
       })
       .skip(skip)
       .limit(limit);
-    // no more jobs posted
-    if (!allJobs.length) {
-      throw new Error(
-        "You have reached the end of job listings and currently there are no more jobs!"
-      );
-    }
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.
