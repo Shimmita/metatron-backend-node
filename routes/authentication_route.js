@@ -30,6 +30,7 @@ authenticationRouter.post(
 
 // check the password reset code
 authenticationRouter.post("/personal/reset/verify", handleResetPassword);
+
 // request for a password reset code
 authenticationRouter.post("/personal/reset/request", handleResetCodeRequest);
 

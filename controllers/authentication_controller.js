@@ -1,10 +1,9 @@
+import Brevo from '@getbrevo/brevo';
 import bcrypt from "bcrypt";
 import admin from "firebase-admin";
-import nodemailer from 'nodemailer';
 import sharp from "sharp";
 import validator from "validator";
 import EmailVerificationSchema from "../model/EmailVerificationModel.js";
-import Brevo from '@getbrevo/brevo'
 import { default as PersonalModel, default as personalModel } from "../model/personalModel.js";
 import ResetCodeModal from "../model/ResetCodeModal.js";
 import {
@@ -14,7 +13,7 @@ import { generateResetCode } from "../utils/codeGenerator.js";
 
 // msg sent to frontend after successful registration
 const successMsg =
-  "Your account has been created successfully pease login.";
+  "Your account has been created successfully please login to verify your email.";
 
 const handleSignupPersonal = async (req, res) => {
   // Get token from params
@@ -244,7 +243,7 @@ const handleSigninPersonal = async (req, res) => {
           <html>
             <head>
               <meta charset="utf-8">
-              <title>Email Verification</title>
+              <title>Email Verification Code</title>
               <style>
                 body { font-family: sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
                 .container { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #fff;
@@ -257,11 +256,12 @@ const handleSigninPersonal = async (req, res) => {
             </head>
             <body>
               <div class="container">
-                <h1>Email Verification</h1>
+                <h1>Email Verification Code</h1>
+                <p>Hi ${user.name},</p> <br/>
                 <p>Thank you for signing up! Please use the verification code below to confirm your email address:</p>
                 <div class="code">${tempCode}</div>
                 <p class="note">This code is valid for a limited time. If you did not request this, please ignore this email.</p>
-                <div class="footer">© ${new Date().getFullYear()} Metatron. All rights reserved.</div>
+                <div class="footer">© ${new Date().getFullYear()} Metatron Dev Platform. All rights reserved.</div>
               </div>
             </body>
           </html>
@@ -278,7 +278,7 @@ const handleSigninPersonal = async (req, res) => {
         let sendSmtpEmail = new Brevo.SendSmtpEmail();
         sendSmtpEmail.subject = emailSubject;
         sendSmtpEmail.htmlContent = htmlContent;
-        sendSmtpEmail.sender = { name: "Metatron", email: process.env.BREVO_FROM };
+        sendSmtpEmail.sender = { name: process.env.PLATFORM_NAME || "Metatron Dev", email: process.env.BREVO_FROM };
         sendSmtpEmail.to = [{ email }];
 
         // Save verification code in DB (replace old record if exists)
@@ -388,7 +388,7 @@ export const handleResetCodeRequest=async(req,res)=>{
         const htmlContent=`<html>
             <head>
               <meta charset="utf-8">
-              <title>Email Verification</title>
+              <title>Metatron Dev</title>
               <style>
                 body {
                   font-family: sans-serif;
@@ -431,6 +431,7 @@ export const handleResetCodeRequest=async(req,res)=>{
             <body>
               <div class="container">
                 <h1>Password Reset Code</h1>
+                <p>Hi ${user.name},</p> <br/>
                 <p>
                   Please use the password reset code below to change your Metatron account password.:
                 </p>
@@ -439,7 +440,7 @@ export const handleResetCodeRequest=async(req,res)=>{
                   This code is valid for a limited time. If you did not request this, please ignore this email.
                 </p>
                 <div class="footer">
-                  © ${new Date().getFullYear()} Metatron. All rights reserved.
+                  © ${new Date().getFullYear()} Metatron Dev Platform. All rights reserved.
                 </div>
               </div>
             </body>
@@ -449,24 +450,17 @@ export const handleResetCodeRequest=async(req,res)=>{
         // extract user email
         let emailSubject="Metatron Password Reset Code"
 
-        // creating a transporter
-         const transporter = nodemailer.createTransport({
-            host: process.env.BREVO_HOST,
-            port: 587, // Or 465 for secure SSL/TLS
-            secure: false, // true for 465, false for other ports
-            auth: {
-            user: process.env.BREVO_SMTP_LOGIN, 
-            pass: process.env.BREVO_SMTP_KEY
-            }
-        });
+        // --- Brevo SDK setup ---
+        let apiInstance = new Brevo.TransactionalEmailsApi();
+        let apiKey = apiInstance.authentications["apiKey"];
+        // Your Brevo API Key
+        apiKey.apiKey = process.env.BREVO_API_KEY; 
 
-        // mail options
-          const mailOptions = {
-            from: process.env.BREVO_FROM, 
-            to: email, 
-            subject:emailSubject,
-            html: htmlContent
-        };
+        let sendSmtpEmail = new Brevo.SendSmtpEmail();
+        sendSmtpEmail.subject = emailSubject;
+        sendSmtpEmail.htmlContent = htmlContent;
+        sendSmtpEmail.sender = { name: process.env.PLATFORM_NAME || "Metatron Dev", email: process.env.BREVO_FROM };
+        sendSmtpEmail.to = [{ email }];
 
         // save in the reset request in the reset code, if exists it will throw an error
         await ResetCodeModal.create({
@@ -474,8 +468,8 @@ export const handleResetCodeRequest=async(req,res)=>{
           email_code:tempCode
         });
 
-    // send the email to the user
-    transporter.sendMail(mailOptions)
+      // Send email
+        await apiInstance.sendTransacEmail(sendSmtpEmail);
 
     // send response back to the frontend
     res.status(200).send({

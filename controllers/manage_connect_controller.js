@@ -240,7 +240,7 @@ export const handleGetAllConnectionRequest = async (req, res) => {
     // fetching the first 10 requests basing on latest first
     const requestsAvailable = await RequestConnectModel.find({ targetId })
       .sort({ createdAt: -1 })
-      .limit(10);
+
     // send the results to the frontend
     res.status(200).send(requestsAvailable);
   } catch (error) {
@@ -264,16 +264,9 @@ export const handleGetTopUsersToConnect = async (req, res) => {
       .findById({ _id: userId }, { network: 1, _id: 0 })
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: -1 });
       
     const currentUserNetwork = networkData ? networkData.network : [];
 
-    // current user network none, return empty list 
-    if (!networkData) {
-      res.status(200).send([]);
-      return
-    }
-   
     // Convert all network IDs and the current user ID to ObjectId
     // Map network IDs to ObjectId. Exclude also current user ID as ObjectId
     const excludedIds = [
@@ -295,7 +288,10 @@ export const handleGetTopUsersToConnect = async (req, res) => {
         avatar: 1,
         selectedSkills: 1,
       }
-    );
+    )
+    .limit(limit)
+    .skip(skip)
+    .sort({createdAt:-1});
 
     // send the response to the frontend for the user to connect with them as friend
     res.status(200).send(nonFriends);
