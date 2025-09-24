@@ -237,10 +237,10 @@ export const handleGetAllConnectionRequest = async (req, res) => {
   try {
     // retrieves all connect request aimed to the target user if any
     const targetId = req?.params.id;
-    // fetching the first 20 requests basing on latest first
+    // fetching the first 10 requests basing on latest first
     const requestsAvailable = await RequestConnectModel.find({ targetId })
       .sort({ createdAt: -1 })
-      .limit(20);
+      .limit(10);
     // send the results to the frontend
     res.status(200).send(requestsAvailable);
   } catch (error) {

@@ -141,7 +141,8 @@ const handleSignupPersonalMongo = async (req, res) => {
     // extracting password and email from the body request
     const {
       password,
-      email
+      email,
+      about
     } = user;
 
     // check if the provided email is valid like acceptable email
@@ -152,6 +153,11 @@ const handleSignupPersonalMongo = async (req, res) => {
     // passwords must be at least 6 characters
     if (password.length < 6) {
       throw new Error("password must be 6 characters minimum!");
+    }
+
+    // no about reject registration
+    if (!about) {
+      throw new Error("please provide a brief about yourself!")
     }
 
     // check if a user exists in the database based on email first which is unique
