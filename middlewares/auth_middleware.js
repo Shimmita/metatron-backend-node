@@ -6,13 +6,13 @@ export function handleAuthMiddleware(req, res, next) {
 
     // not online
     if (!isOnline) {
-      throw new Error('user session expired')
+      throw new Error('access denied, please login to continue with your request!')
     }
 
    // continue with the request
     next()
   } catch (error) {
-    res.status(400).send({ login: true, message: "user session expired!" });
+    res.status(400).send({ login: true, message: error.message });
   }
 
 }

@@ -77,7 +77,7 @@ const store = new mongoDBSession({
 // for reverse proxy sites
 app.set("trust proxy", 1);
 
-// session initialization, session lasts 3 hrs
+// session initialization, session lasts 5 hrs
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -86,7 +86,7 @@ app.use(
     name: process.env.SESSION_NAME,
     store,
     cookie: {
-      maxAge: 60 * 60 * 24 * 1000,
+      maxAge: 60 * 60 * 5 * 1000,
       secure: environment==="SANDBOX" ? false : true,
       sameSite: environment==="SANDBOX" ? "lax" : "none",
     },
@@ -176,7 +176,7 @@ app.use(`${BASE_ROUTE}/valid`, (req, res) => {
     const isOnline = req.session?.isOnline;
     // session ended/expired or guest user
     if (!isOnline) {
-      throw new Error("Hey there, welcome");
+      throw new Error("Hi, Welcome 🤗");
     }
 
     res.status(200).send({
