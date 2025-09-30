@@ -49,7 +49,6 @@ const handleSignupPersonal = async (req, res) => {
     // Check if the user already exists in Fire-store
     const userDoc = await userRef.get();
     if (userDoc.exists && Object.keys(userDoc.data()).length > 0) {
-      console.log("user exists");
       // User already registered send their data to the frontend
       return res.status(200).send({
         // message true means registered thus navigate user homepage
@@ -173,8 +172,9 @@ const handleSignupPersonalMongo = async (req, res) => {
 
     if (!req.file) {
       // user must provide an image or avatar
-      throw new Error('please provide an image or avatar for your profile!')
+      throw new Error('provide an avatar for your profile!')
     } else {
+
       // save user with an avatar
       // Compress and convert the image to AVIF format
       const compressedImageBuffer = await sharp(req.file.buffer)
@@ -208,7 +208,8 @@ const handleSignupPersonalMongo = async (req, res) => {
       });
     }
   } catch (error) {
-    await res.status(400).send(error.message);
+    const errorMessage = error.message
+    await res.status(400).send(errorMessage?.includes('api.cloudinary.com') ? "check your internet connection!":errorMessage);
   }
 };
 

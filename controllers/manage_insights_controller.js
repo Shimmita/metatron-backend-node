@@ -89,9 +89,6 @@ export const getAllInsightsRecommendation=async(req,res)=>{
   
   try {
 
-    // extract skills of the user from the body request
-    const user_skills = req?.body
-
     // will store final output
     let outPutData=[]
 

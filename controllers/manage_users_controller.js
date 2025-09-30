@@ -41,21 +41,7 @@ export const handleGetSpecificUser = async (req, res) => {
 
     // look for a user with the matching id and return
     const user = await personalModel.findById(userId, {
-      avatar:1,
-      name: 1,
-      specialisationTitle: 1,
-      country: 1,
-      county: 1,
-      selectedSkills: 1,
-      network_count: 1,
-      createdAt: 1,
-      network: 1,
-      email: 1,
-      phone: 1,
-      about: 1,
-      linkedin: 1,
-      portfolio: 1,
-      gitHub: 1
+     password:0,
     });
 
     // no user
@@ -432,7 +418,6 @@ export const handleUserUpdateDetails = async (req, res) => {
   } catch (error) {
     const errorMessage = error.message
     // debug
-    console.log(errorMessage);
     if (errorMessage.includes("api.cloudinary.com")) {
       // send error message to the frontend
       res.status(400).send('check your internet connection!');

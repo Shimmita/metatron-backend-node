@@ -148,11 +148,14 @@ export const handleUpdatingOfPost = async (req, res) => {
 export const handleGetAllTechiePost = async (req, res) => {
 
   try {
+    // track user auth for limiting access to pages 2 and above,
+    // limited to max limit only 10 items if user not authenticated
+    const userSession=req.session
+
     // extracting the query params from the frontend
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-
 
     // retrieve all posts in order of latest first
     const allPosts = await TechPostModal.find({})

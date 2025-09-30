@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema(
     },
     educationLevel: {
       type: String,
-      required: [true, "Education level is required"],
+      required: true,
       enum: {
         values: [  
       "High School Diploma",
@@ -57,15 +57,25 @@ const userSchema = new mongoose.Schema(
       "Associate Degree",
       "Bachelors Degree",
       "Masters Degree",
-      "Doctorate Degree"
-              ],
+      "Doctorate Degree",
+      "Other Qualification",
+      ],
         message:
-          "Invalid education level, should be Certificate, Diploma, Bachelors, Masters or PhD",
+          `Invalid education level, should be 
+          High School Diploma,
+          Diploma Certificate,
+          Associate Degree,
+          Bachelors Degree,
+          Masters Degree,
+          Doctorate Degree, or
+          Other Qualification,
+          `,
       },
     },
     eduInstitution: {
       type: String,
-      required: [true, "Education institution is required"],
+      required:false,
+      default:'',
       trim: true,
     },
     phone: {
@@ -98,7 +108,8 @@ const userSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
-      required: [true, "Gender is required"],
+      required:true,
+      default:"Other",
       enum: {
         values: ["Male", "Female", "Other"],
         message: "Gender must be Male, Female or Other",
@@ -111,15 +122,17 @@ const userSchema = new mongoose.Schema(
     },
     selectedSkills: {
       type: [String],
-      required: [true, "At least one skill must be selected"],
+      required:false,
+      default:[]
     },
     avatarID: {
       type: String,
       required: false,
       default: "",
     },
+
+    account: { type: String, required:false, default: "" },
     premium: { type: Boolean, default: false },
-    premiumOnce: { type: Boolean, default: false },
     isOnline: { type: Boolean, default: false },
     isTutorial:{type:Boolean, default:true},
     isGroupTutorial:{type:Boolean, default:true},

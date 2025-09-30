@@ -77,7 +77,7 @@ const store = new mongoDBSession({
 // for reverse proxy sites
 app.set("trust proxy", 1);
 
-// session initialization, session lasts 5 hrs
+// session initialization and maxAge
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -86,7 +86,7 @@ app.use(
     name: process.env.SESSION_NAME,
     store,
     cookie: {
-      maxAge: 60 * 60 * 5 * 1000,
+      maxAge: 60 * 60 * 2 * 1000,
       secure: environment==="SANDBOX" ? false : true,
       sameSite: environment==="SANDBOX" ? "lax" : "none",
     },
@@ -104,7 +104,7 @@ app.use(`${BASE_ROUTE}/account`, authenticationRouter);
 
 
 // posts route
-app.use(`${BASE_ROUTE}/posts`, handleAuthMiddleware, postManageRouter);
+app.use(`${BASE_ROUTE}/posts`,  postManageRouter);
 
 // connections route
 app.use(
@@ -114,28 +114,28 @@ app.use(
 );
 
 //jobs route
-app.use(`${BASE_ROUTE}/jobs`, handleAuthMiddleware, manageJobsRouter);
+app.use(`${BASE_ROUTE}/jobs`,  manageJobsRouter);
 
 // events route
-app.use(`${BASE_ROUTE}/events`, handleAuthMiddleware, eventsManageRouter);
+app.use(`${BASE_ROUTE}/events`,  eventsManageRouter);
 
 // chat route
 app.use(`${BASE_ROUTE}/chats`, handleAuthMiddleware, manageChatAiRoute);
 
 // courses route
-app.use(`${BASE_ROUTE}/courses`, handleAuthMiddleware, coursesManageRouter);
+app.use(`${BASE_ROUTE}/courses`,  coursesManageRouter);
 
 //users route
 app.use(`${BASE_ROUTE}/users`, handleAuthMiddleware, manageUsersRoute);
 
 // friends or networks routed
-app.use(`${BASE_ROUTE}/network`, handleAuthMiddleware, manageNetworkRoute);
+app.use(`${BASE_ROUTE}/network`,handleAuthMiddleware,  manageNetworkRoute);
 
 // global search route
-app.use(`${BASE_ROUTE}/global`, handleAuthMiddleware, manageGlobalSearchRoute);
+app.use(`${BASE_ROUTE}/global`,  manageGlobalSearchRoute);
 
 // groups and communities route
-app.use(`${BASE_ROUTE}/groups`, handleAuthMiddleware, manageGroupCommunityRoute);
+app.use(`${BASE_ROUTE}/groups`,  manageGroupCommunityRoute);
 
 // conversations
 app.use(
@@ -145,13 +145,13 @@ app.use(
 );
 
 // platform insights route
-app.use(`${BASE_ROUTE}/insights`, handleAuthMiddleware, managePlatformInsights);
+app.use(`${BASE_ROUTE}/insights`,  managePlatformInsights);
 
 // premium route
 app.use(`${BASE_ROUTE}/premium`, handleAuthMiddleware, manage_premium_route);
 
 // payment route
-app.use(`${BASE_ROUTE}/payment`, handleAuthMiddleware, manage_payment_route);
+app.use(`${BASE_ROUTE}/payment`, handleAuthMiddleware,  manage_payment_route);
 
 
 // certificate verification route, doesn't require auth middleware

@@ -54,12 +54,6 @@ export const handleJoinGroupCommunity=async(req,res)=>{
  export const handleGetAllGroupsCommunity=async(req,res)=>{
     try {
         const {userId}=req?.params
-        // check if user exist
-        const user=await personalModel.findById(userId)
-
-        if (!user) {
-            throw new Error('user records not found, please create new account')
-        }
 
         const groupsCommunity=await GroupCommunityModel.find({}).sort({name:1})
 

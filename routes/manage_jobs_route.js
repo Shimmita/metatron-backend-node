@@ -27,6 +27,7 @@ import {
   handleUpdateJobStatusHiring,
   handleUploadingUserCV
 } from "../controllers/manage_jobs_controller.js";
+import { handleAuthMiddleware } from "../middlewares/auth_middleware.js";
 // set up multer for file uploads cloudinary
 const uploadMulter = multer({ storage: multer.memoryStorage() });
 
@@ -37,6 +38,7 @@ export const manageJobsRouter = express.Router();
 // apply for new job from the posted
 manageJobsRouter.post(
   "/application/apply",
+  handleAuthMiddleware,
   handleJobApplication
 );
 
@@ -44,81 +46,84 @@ manageJobsRouter.post(
 manageJobsRouter.post(
   "/cv/upload/:userId",
   uploadMulter.single("file"),
+  handleAuthMiddleware,
   handleUploadingUserCV
 );
 
 // handle user viewing or downloading their cv
-manageJobsRouter.post("/cv/my/download/",handleDownloadMyCV)
+manageJobsRouter.post("/cv/my/download/",handleAuthMiddleware,handleDownloadMyCV)
 
 // handle searching of the jobs
-manageJobsRouter.post("/all/search/:userId", handleGetAllJobsSearch);
+manageJobsRouter.post("/all/search/:userId", handleAuthMiddleware, handleGetAllJobsSearch);
 
 // handle getting of the top Jobs the latest 3-4 from the database
-manageJobsRouter.get("/all/top/:userId", handleGetTopJobs);
+manageJobsRouter.get("/all/top/:userId",  handleGetTopJobs);
 
 // getting of job feedback
-manageJobsRouter.get("/all/feedback/:userId", handleGetAllJobFeedBack);
+manageJobsRouter.get("/all/feedback/:userId", handleAuthMiddleware, handleGetAllJobFeedBack);
 
 // delete a job feedback
-manageJobsRouter.delete("/all/feedback/:feedId", handleDeleteJobFeedBack);
+manageJobsRouter.delete("/all/feedback/:feedId", handleAuthMiddleware, handleDeleteJobFeedBack);
 
 // get nearby jobs
-manageJobsRouter.post("/all/nearby/:userId", handleGetNearbyJobs);
+manageJobsRouter.post("/all/nearby/:userId", handleAuthMiddleware, handleGetNearbyJobs);
 
 // get recommended jobs
-manageJobsRouter.post("/all/recommended/:userId", handleGetRecommended);
+manageJobsRouter.post("/all/recommended/:userId", handleAuthMiddleware, handleGetRecommended);
 
 // get user job applications 
-manageJobsRouter.get("/all/my/application/:userId", handleGetMyJobApplications);
+manageJobsRouter.get("/all/my/application/:userId",handleAuthMiddleware, handleGetMyJobApplications);
 
 // get user job statistics 
-manageJobsRouter.get("/all/my/statistics/:userId", handleGetMyJobStats);
+manageJobsRouter.get("/all/my/statistics/:userId",handleAuthMiddleware, handleGetMyJobStats);
 
 // get all jobs 
 manageJobsRouter.get("/all/:userId", handleGetAllJobs);
 
 // get verified jobs
-manageJobsRouter.get("/all/verified/:userId", handleGetVerifiedJobs);
+manageJobsRouter.get("/all/verified/:userId",handleAuthMiddleware, handleGetVerifiedJobs);
 
 // get external jobs, jobs with external links
-manageJobsRouter.get("/all/external/:userId", handleGetExternalJobs);
+manageJobsRouter.get("/all/external/:userId",handleAuthMiddleware, handleGetExternalJobs);
 
 // get specific job
 manageJobsRouter.get("/all/:id", handleGetSpecificJobPost);
 
-
 // user deletes their job application, must purge the uploaded documents in the cloud
-manageJobsRouter.delete("/all/delete/my/application/:userId/:gender/:jobAppID",handleDeleteMyJobApplication)
+manageJobsRouter.delete(
+  "/all/delete/my/application/:userId/:gender/:jobAppID",
+  handleAuthMiddleware,
+  handleDeleteMyJobApplication)
 
 
 // HIRING MANAGER
 
 //create jobs route
-manageJobsRouter.post("/create", uploadMulter.single("image"), handleCreateJob);
+manageJobsRouter.post("/create", uploadMulter.single("image"),handleAuthMiddleware, handleCreateJob);
 
 // get all posted jobs  by the hirer using their email as iD
-manageJobsRouter.get("/all/hiring/posted/:emailId", handleGetAllJobsHiring);
+manageJobsRouter.get("/all/hiring/posted/:emailId",handleAuthMiddleware, handleGetAllJobsHiring);
 
 // get all job applicants of a specific hr email and jobId
-manageJobsRouter.get("/all/hiring/applicants/:emailId/:jobId", handleGetJobApplicantsHiring);
+manageJobsRouter.get("/all/hiring/applicants/:emailId/:jobId",handleAuthMiddleware, handleGetJobApplicantsHiring);
 
 // updating the status of the job applicant by the hiring manager
-manageJobsRouter.put("/all/hiring/application/status/:emailId/:jobId", handleUpdateJobApplicationStatusHiring);
+manageJobsRouter.put("/all/hiring/application/status/:emailId/:jobId",handleAuthMiddleware, handleUpdateJobApplicationStatusHiring);
 
 // updating the status of job posted [active or inactive]
-manageJobsRouter.put("/all/hiring/job/status/:emailId/:jobId", handleUpdateJobStatusHiring);
+manageJobsRouter.put("/all/hiring/job/status/:emailId/:jobId",handleAuthMiddleware, handleUpdateJobStatusHiring);
 
 // updating the entire job post
-manageJobsRouter.put("/all/hiring/job/update/:emailId/:jobId", handleUpdateEntireJobHiring);
+manageJobsRouter.put("/all/hiring/job/update/:emailId/:jobId",handleAuthMiddleware, handleUpdateEntireJobHiring);
 
 // hr deleting a job they posted
-manageJobsRouter.delete("/all/hiring/job/delete/:emailId/:jobId", handleDeleteJobPostHiring);
+manageJobsRouter.delete("/all/hiring/job/delete/:emailId/:jobId",handleAuthMiddleware, handleDeleteJobPostHiring);
 
 
 // USABLE TO ANY BOTH APPLICANT AND HR
 
 // download the cv of the user, it will create a signedURL and sent to the frontend
-manageJobsRouter.post("/all/download/cv/:emailId/:jobId", handleDownloadDocumentHiring);
+manageJobsRouter.post("/all/download/cv/:emailId/:jobId", handleAuthMiddleware,handleDownloadDocumentHiring);
 
 
 
