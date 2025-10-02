@@ -12,6 +12,7 @@ import mongoose from "mongoose";
 import {
   handleAuthMiddleware
 } from "./middlewares/auth_middleware.js";
+import personalModel from "./model/personalModel.js";
 import authenticationRouter from "./routes/authentication_route.js";
 import manageCertVerifyRoute from "./routes/manage_cert_verify_route.js";
 import manageChatAiRoute from "./routes/manage_chat_route.js";
@@ -171,8 +172,14 @@ app.use(`${BASE_ROUTE}/signout`, (req, res) => {
 });
 
 // for checking user valid when frontend reloaded. all routes use it
-app.use(`${BASE_ROUTE}/valid`, (req, res) => {
+app.use(`${BASE_ROUTE}/valid`, async(req, res) => {
+
+
+    // current number of registered users
+    const usersTotal=await personalModel.countDocuments()
+    
   try {
+
     const isOnline = req.session?.isOnline;
     // session ended/expired or guest user
     if (!isOnline) {
@@ -180,10 +187,11 @@ app.use(`${BASE_ROUTE}/valid`, (req, res) => {
     }
 
     res.status(200).send({
-      authorised: true
+      authorised: true,
+      usersCount:usersTotal
     });
   } catch (error) {
-    res.status(400).send(error.message);
+    res.status(400).send({error: error.message,usersCount:usersTotal});
   }
 });
 
