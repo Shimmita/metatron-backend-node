@@ -87,7 +87,7 @@ manageJobsRouter.get("/all/verified/:userId",handleAuthMiddleware, handleGetVeri
 manageJobsRouter.get("/all/external/:userId",handleAuthMiddleware, handleGetExternalJobs);
 
 // get specific job
-manageJobsRouter.get("/all/:id", handleGetSpecificJobPost);
+manageJobsRouter.get("/all/specific/:userId/:jobId", handleGetSpecificJobPost);
 
 // user deletes their job application, must purge the uploaded documents in the cloud
 manageJobsRouter.delete(

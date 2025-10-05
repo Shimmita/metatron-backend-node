@@ -1318,15 +1318,45 @@ export const handleGetAllJobsSearch = async (req, res) => {
 // get specific post or one post
 export const handleGetSpecificJobPost = async (req, res) => {
   try {
-    const id = req?.params.id;
+    let allJobs=[]
+
+    const {jobId,userId} = req?.params || {}
     const job = await JobPostModel.findById({
-      _id: id
+      _id: jobId
     });
+
+    if (job) {
+      allJobs.push(job)
+    }
+
+     // fetch in the applied jobs, those containing the userId
+    // will help to match if a particular top job is applied.
+    const jobsUserApplied = await JobsAppliedModel.find({
+      "applicant.applicantID": userId
+    }, {
+      applicant: 0,
+      cvLink: 0,
+      viewed: 0,
+      createdAt: 0,
+      updatedAt: 0
+    })
+
+    // updating the jobs if current user applied or not
+    let checkedJobs = allJobs.map((main_job) => {
+      for (const element of jobsUserApplied) {
+        if (main_job.id === element.jobID) {
+          main_job.currentUserApplied = true
+        }
+      }
+
+      return main_job
+    })
+
     // job found
-    res.status(200).send(job);
+    res.status(200).send(checkedJobs);
   } catch (error) {
     console.log(error)
-    res.status(400).send("job not found");
+    res.status(400).send("job not found!");
   }
 };
 
