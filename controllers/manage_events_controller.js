@@ -58,8 +58,29 @@ export const handleGetAllEvents=async(req,res)=>{
   }
 }
 
-// get top 3 events
+// handle getting of specific event
+export const handleGetSpecificEvent=async(req,res)=>{
+   try {
+    let results=[]
+    const {eventId}=req.params || {}
 
+    // fetch the data in db
+    const eventData=await AddEventModel.findById(eventId)
+    if (eventData) {
+      results.push(eventData)
+    }
+
+    // send the response back to the frontend
+    res.status(200).send(results)
+
+  } catch (error) {
+    // debug
+    console.log(error.message)
+    res.status(400).send(error.message)
+  }
+}
+
+// get top 3 events
 export const handleGetTopEvents=async(req,res)=>{
   try {
 

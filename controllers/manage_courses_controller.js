@@ -271,6 +271,8 @@ export const handleGetAllCourses = async (req, res) => {
 };
 
 
+
+
 export const handleGetSimilarCourses = async (req, res) => {
   try {
     // extract userId
@@ -352,16 +354,53 @@ export const handleGetPopularCourses=async(req,res)=>{
 
 
 
-// get specific post or one post
+// get specific course 
 export const handleGetSpecificCourse = async (req,res) => {
-  const id = req?.params.id;
+  const {courseId,userId} = req?.params||{}
 
   try {
-    const post = await TechPostModal.findById(id)
-      .sort()
+    let allCourses=[]
+    const course = await PostCourseModel.findById(courseId)
+    if (course) {
+      allCourses.push(course)
+    }
 
-    res.status(200).send(post);
+
+    // fetch all enrolled courses by the user
+    const enrolledCourses=await CourseEnrollmentModel.find({userId})
+
+    // fetch all certificates that user has accredited
+    const userCertificates=await CourseCertsModel.find({studentId:userId}) 
+
+      // results, after updating enrolled ones
+    const results=allCourses.map(course=>{
+
+      // loop through enrolled courses against current course
+      for (const enrolledCourse of enrolledCourses) {
+        if (enrolledCourse.courseId===course.id) {
+          course.currentUserEnrolled=true
+          course.currentUserRating=enrolledCourse.userRating
+        }
+      }
+
+      // loop through user certificates against the current course
+      for (const certificate of userCertificates) {
+        if (certificate.courseId===course.id) {
+          course.currentUserCertified=true
+          course.currentCertId=certificate.id
+          course.currentCertDate=certificate.createdAt
+        }
+      }
+
+
+      return course
+    })
+
+    // send results to the fronted
+    res.status(200).send(results);
   } catch (error) {
+    console.log(error)
+    // send error to the client, frontend
     res.status(400).send(error.message);
   }
   

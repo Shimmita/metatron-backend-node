@@ -1,5 +1,5 @@
 import express from "express";
-import { handleCreateEventRSVP, handleCreateNewEvent, handleDeleteMyEvent, handleDeletionRSVP, handleGetAllEvents, handleGetEventRSVP, handleGetEventsRecommended, handleGetEventStats, handleGetNearbyEvents, handleGetSearchEvents, handleGetSpecificUserEvents, handleGetTopEvents } from '../controllers/manage_events_controller.js';
+import { handleCreateEventRSVP, handleCreateNewEvent, handleDeleteMyEvent, handleDeletionRSVP, handleGetAllEvents, handleGetEventRSVP, handleGetEventsRecommended, handleGetEventStats, handleGetNearbyEvents, handleGetSearchEvents, handleGetSpecificEvent, handleGetSpecificUserEvents, handleGetTopEvents } from '../controllers/manage_events_controller.js';
 import { handleAuthMiddleware } from '../middlewares/auth_middleware.js';
 export const eventsManageRouter = express.Router();
 
@@ -9,13 +9,17 @@ eventsManageRouter.post(
   handleAuthMiddleware,
   handleCreateNewEvent
 );
-// get events route
-eventsManageRouter.get("/all",handleGetAllEvents)
 
 // get top 3 events
 eventsManageRouter.get("/all/top",
   handleAuthMiddleware,
   handleGetTopEvents)
+
+// get events route
+eventsManageRouter.get("/all",handleGetAllEvents)
+
+// get specific event
+eventsManageRouter.get("/all/specific/:eventId",handleGetSpecificEvent)
 
 
 // get all events associated with a specific user

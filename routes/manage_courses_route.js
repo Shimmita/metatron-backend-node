@@ -36,6 +36,9 @@ coursesManageRouter.post(
 // get all courses posts, userId for checking if user enrolled in any
 coursesManageRouter.get("/all/:userId", handleGetAllCourses);
 
+// handle get specific course
+coursesManageRouter.get("/all/specific/:userId/:courseId", handleGetSpecificCourse);
+
 // retrieves courses search
 coursesManageRouter.post("/all/search/:userId",handleAuthMiddleware, handleGetAllCoursesSearch);
 
@@ -49,7 +52,7 @@ coursesManageRouter.post("/enroll",handleAuthMiddleware,handleCreateCourseEnroll
 coursesManageRouter.get("/all/popular",handleAuthMiddleware, handleGetPopularCourses);
 
 // get all similar courses
-coursesManageRouter.get("/all/similar/:userId/:courseId",handleAuthMiddleware, handleGetSimilarCourses);
+coursesManageRouter.get("/all/similar/:userId/:courseId", handleGetSimilarCourses);
 
 // get specific post
 coursesManageRouter.get("/all/:id",handleAuthMiddleware,handleGetSpecificCourse)
