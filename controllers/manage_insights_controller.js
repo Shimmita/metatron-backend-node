@@ -132,25 +132,25 @@ export const getAllInsightsRecommendation=async(req,res)=>{
 
     // 7. Most Popular courses
     const topCoursesCategories=await PostCourseModel.aggregate([
-       { $group: { _id: "$course_category.main", count: { $sum: 1 } } },
+      { $group: { _id: "$course_category.main", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 6 }
     ])
 
-
     // details are returned based and description sorted by length ascending
-    outPutData.push({label:"skills possessed by most users ", description:topUserSkills.map(skill=>skill._id).sort((a,b)=>a.length-b.length)})
-    outPutData.push({label:"skills required by most recruiters", description:topJobSkills.map(job=>job._id).sort((a,b)=>a.length-b.length)})
-    outPutData.push({label:"Popular jobs posted by recruiters", description:topJobCategory.map(job=>job._id).sort((a,b)=>a.length-b.length)})
-    outPutData.push({label:"Popular tech events posted by users", description:topEventCategories.map(event=>event._id).sort((a,b)=>a.length-b.length)})
-    outPutData.push({label:"Top milestone posts done by users", description:topPostCategories.map(post=>post._id).sort((a,b)=>a.length-b.length)})
-    outPutData.push({label:"Popular courses posted by instructors", description:topCoursesCategories.map(course=>course._id).sort((a,b)=>a.length-b.length)})
+    topUserSkills.length && outPutData.push({label:"skills possessed by most users ", description:topUserSkills.map(skill=>skill._id).sort((a,b)=>a.length-b.length)})
+    topJobSkills.length && outPutData.push({label:"skills required by most recruiters", description:topJobSkills.map(job=>job._id).sort((a,b)=>a.length-b.length)})
+    topJobCategory.length && outPutData.push({label:"Popular jobs posted by recruiters", description:topJobCategory.map(job=>job._id).sort((a,b)=>a.length-b.length)})
+    topEventCategories.length && outPutData.push({label:"Popular tech events posted by users", description:topEventCategories.map(event=>event._id).sort((a,b)=>a.length-b.length)})
+    topPostCategories.length && outPutData.push({label:"Top milestone posts done by users", description:topPostCategories.map(post=>post._id).sort((a,b)=>a.length-b.length)})
+    topCoursesCategories.length && outPutData.push({label:"Popular courses posted by instructors", description:topCoursesCategories.map(course=>course._id).sort((a,b)=>a.length-b.length)})
+
 
     // send the response to the frontend, client
     res.status(200).send(outPutData)
 
   } catch (error) {
-     console.error("error:", error);
+    console.error("error:", error);
     res.status(500).send(error.message);
   }
 }
