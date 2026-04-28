@@ -861,7 +861,7 @@ export const handleGetTopJobs = async (req, res) => {
       .sort({
         createdAt: -1
       })
-      .limit(3);
+      .limit(5);
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.
