@@ -94,9 +94,29 @@ export const uploadVideoToCloudinaryWithProgress = async (buffer, filename, fold
   });
 };
 
+// upload base64 documents such as PDF files to cloudinary
+export const uploadBase64DocumentToCloudinary = async (base64DataUri, folder, filename) => {
+  const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+  return cloudinary.uploader.upload(base64DataUri, {
+    folder,
+    resource_type: "raw",
+    public_id: `${Date.now()}_${safeFilename}`,
+    filename_override: safeFilename,
+    use_filename: true,
+    unique_filename: true,
+    overwrite: true,
+  });
+};
+
 // delete video from cloudinary
 export const deleteVideoFromCloudinary = (publicId) => {
   return cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+};
+
+// delete raw document from cloudinary
+export const deleteDocumentFromCloudinary = (publicId) => {
+  return cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
 };
 
 
@@ -109,5 +129,3 @@ export const deleteFromCloudinary = (publicId) => {
     });
   });
 };
-
-

@@ -9,6 +9,8 @@ import JobsAppliedModel from "../model/JobsAppliedModel.js";
 import personalModel from "../model/personalModel.js";
 import {
   deleteFromCloudinary,
+  deleteDocumentFromCloudinary,
+  uploadBase64DocumentToCloudinary,
   uploadToCloudinary
 } from "../utils/cloudinary.js";
 
@@ -20,6 +22,157 @@ const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET
 
 // cloudinary init
 const CLOUDINARY_POST_IMAGES_PATH = process.env.CLOUDINARY_POST_IMAGES_PATH
+const CLOUDINARY_COURSES_DOCS_FOLDER = process.env.CLOUDINARY_COURSES_DOCS_FOLDER || "metatron/docs"
+
+const sanitizeCvFilename = (filename = "cv.pdf") =>
+  filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+const buildCvStorageDescriptor = (data) => JSON.stringify(data);
+
+const getErrorMessage = (error, fallback = "something went wrong") => {
+  if (!error) return fallback;
+  if (typeof error === "string") return error;
+  if (error.message) return error.message;
+  if (error.error?.message) return error.error.message;
+  if (error.http_code && error.name) return `${error.name} ${error.http_code}`;
+
+  try {
+    return JSON.stringify(error);
+  } catch (stringifyError) {
+    return fallback;
+  }
+};
+
+const parseCvStorageDescriptor = (cvName) => {
+  if (!cvName) return null;
+  if (typeof cvName === "object") return cvName;
+
+  try {
+    const parsed = JSON.parse(cvName);
+    if (parsed?.provider) return parsed;
+  } catch (error) {
+    // Old records stored only the Supabase object name.
+  }
+
+  return {
+    provider: "supabase",
+    path: cvName
+  };
+};
+
+const getCvDownloadUrl = async (cvName) => {
+  const cvFile = parseCvStorageDescriptor(cvName);
+
+  if (!cvFile) {
+    throw new Error("cvName missing in the body request");
+  }
+
+  if (cvFile.provider === "cloudinary") {
+    if (!cvFile.url) {
+      throw new Error("cloudinary cv url missing");
+    }
+
+    return cvFile.url;
+  }
+
+  const supabasePath = cvFile.path || cvFile.name;
+  if (!supabasePath) {
+    throw new Error("supabase cv path missing");
+  }
+
+  const {
+    data,
+    error
+  } = await SUPABASE.storage.from(SUPABASE_BUCKET).createSignedUrl(supabasePath, 60);
+
+  if (error) throw new Error(getErrorMessage(error));
+
+  return data.signedUrl;
+};
+
+const sendCvDownloadResponse = async (res, cvName) => {
+  const cvFile = parseCvStorageDescriptor(cvName);
+
+  if (!cvFile) {
+    throw new Error("cvName missing in the body request");
+  }
+
+  if (cvFile.provider === "cloudinary") {
+    if (!cvFile.url) {
+      throw new Error("cloudinary cv url missing");
+    }
+
+    const cvResponse = await fetch(cvFile.url);
+    if (!cvResponse.ok) {
+      throw new Error(`cloudinary cv download failed (${cvResponse.status})`);
+    }
+
+    const cvBuffer = Buffer.from(await cvResponse.arrayBuffer());
+    const filename = sanitizeCvFilename(cvFile.originalName || "cv.pdf");
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.status(200).send(cvBuffer);
+    return;
+  }
+
+  const cvUrl = await getCvDownloadUrl(cvName);
+  res.type("text/plain").status(200).send(cvUrl);
+};
+
+const removeStoredCv = async (cvName) => {
+  const cvFile = parseCvStorageDescriptor(cvName);
+  if (!cvFile) return;
+
+  if (cvFile.provider === "cloudinary" && cvFile.publicId) {
+    await deleteDocumentFromCloudinary(cvFile.publicId);
+    return;
+  }
+
+  const supabasePath = cvFile.path || cvFile.name;
+  if (supabasePath) {
+    await SUPABASE.storage.from(SUPABASE_BUCKET).remove([supabasePath]);
+  }
+};
+
+const uploadCvToSupabase = async ({ path, buffer, originalname }) => {
+  const {
+    error
+  } = await SUPABASE.storage
+    .from(SUPABASE_BUCKET)
+    .upload(path, buffer, {
+      cacheControl: "5000",
+      upsert: true,
+      contentType: "application/pdf"
+    });
+
+  if (error) {
+    throw new Error(getErrorMessage(error));
+  }
+
+  return buildCvStorageDescriptor({
+    provider: "supabase",
+    path,
+    originalName: originalname
+  });
+};
+
+const uploadCvToCloudinaryBase64 = async ({ originalname, buffer }) => {
+  const safeOriginalName = sanitizeCvFilename(originalname);
+  const base64Pdf = `data:application/pdf;base64,${buffer.toString("base64")}`;
+  const result = await uploadBase64DocumentToCloudinary(
+    base64Pdf,
+    CLOUDINARY_COURSES_DOCS_FOLDER,
+    safeOriginalName
+  );
+
+  return buildCvStorageDescriptor({
+    provider: "cloudinary",
+    publicId: result.public_id,
+    url: result.secure_url,
+    originalName: originalname
+  });
+};
 
 
 // creating of new post
@@ -491,17 +644,7 @@ export const handleDownloadMyCV=async(req,res)=>{
       throw new Error("cvName missing in the body request")
     }
 
-    // supabase operation to get the signed url that lasts for 60 seconds
-    const {
-      data,
-      error
-    } = await SUPABASE.storage.from(SUPABASE_BUCKET).createSignedUrl(cvName, 60);
-
-    // error 
-    if (error) throw new Error(error);
-
-    // send the signed url back to the frontend
-    res.status(200).send(data.signedUrl);
+    await sendCvDownloadResponse(res, cvName);
 
   } catch (error) {
      // debug
@@ -542,15 +685,7 @@ export const handleDownloadDocumentHiring = async (req, res) => {
       throw new Error('job not found!')
     }
 
-    // supabase operation to get the signed url that lasts for 60 seconds
-    const {
-      data,
-      error
-    } = await SUPABASE.storage.from(SUPABASE_BUCKET).createSignedUrl(cvName, 60);
-    if (error) throw new Error(error);
-
-    // send the signed url back to the frontend
-    res.status(200).send(data.signedUrl);
+    await sendCvDownloadResponse(res, cvName);
 
   } catch (error) {
     // debug
@@ -1379,46 +1514,53 @@ if (!user) {
 
     // file,cv present
     if (file) {
+      const previousCvLink = user.cvLink;
+      const {originalname,buffer} = file;
+      const safeOriginalName = sanitizeCvFilename(originalname);
 
-      // check if user has previous file, delete it
-      if (user.cvLink.length>2) {
-        await SUPABASE.storage.from(SUPABASE_BUCKET).remove([user?.cvLink]);
-      }
-        
-
-    const {originalname,buffer} = file;
-
-    // cv file name with date preceding
-    const finalDocumentUploadedName = `${Date.now()}-${originalname}`
+      // cv file name with date preceding
+      const finalDocumentUploadedName = `${Date.now()}-${safeOriginalName}`
+      let cvStorageDescriptor;
     
-    // Upload to Supabase folder jobs
-    const {
-      error
-    } = await SUPABASE.storage
-      .from(SUPABASE_BUCKET)
-      .upload(finalDocumentUploadedName, buffer, {
-        cacheControl: "5000",
-        upsert: true,
-        contentType: 'application/pdf'
-      });
+      try {
+        cvStorageDescriptor = await uploadCvToSupabase({
+          path: finalDocumentUploadedName,
+          buffer,
+          originalname
+        });
+      } catch (supabaseError) {
+        console.log("Supabase CV upload failed, retrying with Cloudinary base64:", getErrorMessage(supabaseError));
 
-       // error encountered during file upload
-      if (error) {
-        throw new Error(error.message);
+        try {
+          cvStorageDescriptor = await uploadCvToCloudinaryBase64({
+            originalname,
+            buffer
+          });
+        } catch (cloudinaryError) {
+          throw new Error(`cv upload failed: ${getErrorMessage(cloudinaryError, "cloudinary upload failed")}`);
+        }
       }
 
       // update the user cv link in their profile
-      user.cvLink=finalDocumentUploadedName
+      user.cvLink=cvStorageDescriptor
 
       // cv user updated, cv link
       await user.save()
+
+      if (previousCvLink) {
+        try {
+          await removeStoredCv(previousCvLink);
+        } catch (deleteError) {
+          console.log("previous cv delete failed:", getErrorMessage(deleteError));
+        }
+      }
 
     // update any previously made apps by the user to reflect latest cv
     const userApplications=await JobsAppliedModel.find({"applicant.applicantID":userId})
 
     // loop through user applications and update the cvName to reflect latest changes
     for (const element of userApplications) {
-      element.cvName=finalDocumentUploadedName
+      element.cvName=cvStorageDescriptor
       await element.save()
     }
   
