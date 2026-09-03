@@ -9,6 +9,22 @@ export const getPlatformInsights = async (req, res) => {
     const insights = [];
     const tools=[]
 
+    const [
+      developersTotal,
+      activeJobsTotal,
+      jobsTotal,
+      eventsTotal,
+      coursesTotal,
+      postsTotal,
+    ] = await Promise.all([
+      personalModel.countDocuments(),
+      JobPostModel.countDocuments({ status: "active" }),
+      JobPostModel.countDocuments(),
+      AddEventModel.countDocuments(),
+      PostCourseModel.countDocuments(),
+      TechPostModel.countDocuments(),
+    ]);
+
     // 1. Top Skills
     const topSkills = await personalModel.aggregate([
       { $unwind: "$selectedSkills" },
@@ -74,6 +90,14 @@ export const getPlatformInsights = async (req, res) => {
 
     // send response to the frontend
     res.status(200).json({
+        totals: {
+          developers: developersTotal,
+          techGigs: activeJobsTotal,
+          jobs: jobsTotal,
+          events: eventsTotal,
+          courses: coursesTotal,
+          posts: postsTotal,
+        },
         insights,
         tools
     });
