@@ -47,6 +47,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
+    role: {
+      type: String,
+      required: true,
+      default: "user",
+      enum: {
+        values: ["admin", "user"],
+        message: "Role must be admin or user",
+      },
+    },
     educationLevel: {
       type: String,
       required: true,
@@ -134,6 +143,10 @@ const userSchema = new mongoose.Schema(
     account: { type: String, required:false, default: "" },
     premium: { type: Boolean, default: false },
     isOnline: { type: Boolean, default: false },
+    isDisabled: { type: Boolean, default: false },
+    disabledReason: { type: String, required: false, default: "", trim: true },
+    disabledBy: { type: String, required: false, default: "" },
+    disabledAt: { type: Date, required: false },
     isTutorial:{type:Boolean, default:true},
     isGroupTutorial:{type:Boolean, default:true},
     network: { type: [mongoose.Types.ObjectId], default: [] },

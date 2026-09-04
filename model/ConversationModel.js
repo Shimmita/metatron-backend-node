@@ -11,6 +11,9 @@ const ConversationModel = new mongoose.Schema(
     targetAvatar: { type: String, required: false, default: "" },
     isTargetRead: { type: Boolean, default: false },
     lastSenderId: { type: String, required: true, ref: "personal" },
+    adminThread: { type: Boolean, default: false },
+    adminUserId: { type: String, required: false, default: "" },
+    userParticipantId: { type: String, required: false, default: "" },
   },
   {
     timestamps: true,

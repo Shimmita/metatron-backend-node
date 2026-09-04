@@ -158,7 +158,7 @@ export const handleGetAllTechiePost = async (req, res) => {
     const skip = (page - 1) * limit;
 
     // retrieve all posts in order of latest first
-    const allPosts = await TechPostModal.find({})
+    const allPosts = await TechPostModal.find({ isDisabled: { $ne: true } })
       .sort({
         createdAt: -1
       })
@@ -185,7 +185,7 @@ export const handleGetAllFilteredPosts=async(req,res)=>{
 
     // Initialize query
     const query = {
-      $and: []
+      $and: [{ isDisabled: { $ne: true } }]
     };
 
      // handle job_skill-set search
@@ -227,7 +227,7 @@ export const handleGetAllFilteredPosts=async(req,res)=>{
 // get top 4 posts
 export const handleGetTopPosts = async (req, res) => {
   try {
-    const posts = await TechPostModal.find().limit(4);
+    const posts = await TechPostModal.find({ isDisabled: { $ne: true } }).limit(4);
     res.status(200).send(posts);
   } catch (error) {
     //log the error
@@ -272,6 +272,9 @@ export const handleGetSpecificPostDetails = async (req, res) => {
     });
     if (!post) {
       throw new Error("post not found!");
+    }
+    if (post.isDisabled) {
+      throw new Error("post disabled!");
     }
     // send the response to the frontend
     res.status(200).send(post);

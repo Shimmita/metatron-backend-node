@@ -41,7 +41,7 @@ export const handleGetAllEvents=async(req,res)=>{
     const skip = (page - 1) * limit;
 
     // fetch the data in db
-    const eventsData=await AddEventModel.find({})
+    const eventsData=await AddEventModel.find({ isDisabled: { $ne: true } })
     .sort({
       createdAt:-1
     })
@@ -67,6 +67,9 @@ export const handleGetSpecificEvent=async(req,res)=>{
     // fetch the data in db
     const eventData=await AddEventModel.findById(eventId)
     if (eventData) {
+      if (eventData.isDisabled) {
+        throw new Error("event disabled!")
+      }
       results.push(eventData)
     }
 
@@ -84,7 +87,7 @@ export const handleGetSpecificEvent=async(req,res)=>{
 export const handleGetTopEvents=async(req,res)=>{
   try {
 
-    const topEvents=await AddEventModel.find({}).limit(3).sort({
+    const topEvents=await AddEventModel.find({ isDisabled: { $ne: true } }).limit(3).sort({
       createdAt:-1
     })
     // send response back to the frontend, client
@@ -145,7 +148,7 @@ export const handleGetSearchEvents=async(req,res)=>{
 
      // Initialize query
     const query = {
-      $and: []
+      $and: [{ isDisabled: { $ne: true } }]
     };
 
       // Handle job_titles search
@@ -221,6 +224,7 @@ export const handleGetNearbyEvents=async(req,res)=>{
 
   // search for events where user's country is based
     const nearbyEvents = await AddEventModel.find({
+      isDisabled: { $ne: true },
       "location.country": {
         $regex: country,
         $options: "i"
@@ -255,7 +259,7 @@ export const handleGetEventsRecommended=async(req,res)=>{
 
   // Initialize query
     const query = {
-      $and: []
+      $and: [{ isDisabled: { $ne: true } }]
     };
 
     // handle events_skills_set search
@@ -304,6 +308,10 @@ export const handleCreateEventRSVP=async(req,res)=>{
 
       if (!eventObject) {
         throw new Error("your event does not exist!")
+      }
+
+      if (eventObject.isDisabled) {
+        throw new Error("event unavailable!")
       }
 
       // owner of the event can't rsvp themselves

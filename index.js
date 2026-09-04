@@ -18,6 +18,7 @@ import manageCertVerifyRoute from "./routes/manage_cert_verify_route.js";
 import manageChatAiRoute from "./routes/manage_chat_route.js";
 import manageConnectRequestRoute from "./routes/manage_connect_route.js";
 import manageConversationsRoute from "./routes/manage_converse_route.js";
+import manageAdminRoute from "./routes/manage_admin_route.js";
 import {
   coursesManageRouter
 } from "./routes/manage_courses_route.js";
@@ -148,6 +149,9 @@ app.use(
 // platform insights route
 app.use(`${BASE_ROUTE}/insights`,  managePlatformInsights);
 
+// admin master-control route
+app.use(`${BASE_ROUTE}/admin`, handleAuthMiddleware, manageAdminRoute);
+
 // premium route
 app.use(`${BASE_ROUTE}/premium`, handleAuthMiddleware, manage_premium_route);
 
@@ -184,6 +188,12 @@ app.use(`${BASE_ROUTE}/valid`, async(req, res) => {
     // session ended/expired or guest user
     if (!isOnline) {
       throw new Error("Hi, Welcome 🤗");
+    }
+
+    const sessionUser = await personalModel.findById(req.session?.userID).select("isDisabled").lean();
+    if (sessionUser?.isDisabled) {
+      const supportEmail = process.env.DEV_EMAIL || process.env.BREVO_FROM || "technical support";
+      throw new Error(`Your Metatron account has been disabled. Contact technical help at ${supportEmail}.`);
     }
 
     res.status(200).send({

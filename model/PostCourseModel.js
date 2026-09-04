@@ -125,6 +125,26 @@ const courseModel = new mongoose.Schema({
     required: false,
     default: false
   },
+  isDisabled: {
+    type: Boolean,
+    required: false,
+    default: false
+  },
+  disabledReason: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true
+  },
+  disabledBy: {
+    type: String,
+    required: false,
+    default: ""
+  },
+  disabledAt: {
+    type: Date,
+    required: false
+  },
 
 
   course_rate_count: {

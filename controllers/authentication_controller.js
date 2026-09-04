@@ -232,6 +232,11 @@ const handleSigninPersonal = async (req, res) => {
     }
 
     if (await bcrypt.compare(password, user.password)) {
+      if (user.isDisabled) {
+        const supportEmail = process.env.DEV_EMAIL || process.env.BREVO_FROM || "technical support";
+        throw new Error(`Your Metatron account has been disabled. Contact technical help at ${supportEmail}.`);
+      }
+
       if (user.email_verified) {
         req.session.isOnline = true;
         req.session.userID = user._id;
@@ -357,7 +362,8 @@ export const handleEmailVerification=async(req,res)=>{
 export const handleResetCodeRequest=async(req,res)=>{
 
   try {
-    const {email}=req.body || {}
+    const {email: rawEmail}=req.body || {}
+    const email = rawEmail?.trim()?.toLowerCase();
       // check if the provided email is valid like acceptable email
     if (!validator.isEmail(email)) {
       throw new Error("email is invalid!");
@@ -374,7 +380,7 @@ export const handleResetCodeRequest=async(req,res)=>{
       );
     }
 
-     // check for reset code records in the db, if exist then use the email_code and no generations
+     // check for reset code records in the db, if exist then reuse the email_code
       const resetCodeRecords=await ResetCodeModal.findOne({email})
 
       let tempCode="88573"
@@ -463,11 +469,15 @@ export const handleResetCodeRequest=async(req,res)=>{
         sendSmtpEmail.sender = { name: process.env.PLATFORM_NAME || "Metatron Dev", email: process.env.BREVO_FROM };
         sendSmtpEmail.to = [{ email }];
 
-        // save in the reset request in the reset code, if exists it will throw an error
-        await ResetCodeModal.create({
-          email,
-          email_code:tempCode
-        });
+        if (resetCodeRecords) {
+          resetCodeRecords.email_code = tempCode;
+          await resetCodeRecords.save();
+        } else {
+          await ResetCodeModal.create({
+            email,
+            email_code:tempCode
+          });
+        }
 
       // Send email
         await apiInstance.sendTransacEmail(sendSmtpEmail);
@@ -487,7 +497,8 @@ export const handleResetCodeRequest=async(req,res)=>{
 
 // handle reset password
 const handleVerifyResetCode = async (req, res) => {
-  const {email_code,email:bodyEmail}=req.body || {}
+  const {email_code,email:rawEmail}=req.body || {}
+  const bodyEmail = rawEmail?.trim()?.toLowerCase();
   try { 
     // check if the provided email is valid like acceptable email
     if (!validator.isEmail(bodyEmail)) {
@@ -539,9 +550,10 @@ const handleVerifyResetCode = async (req, res) => {
 // complete password reset
 const handleCompletePasswordReset = async (req, res) => {
   const {
-    email,
+    email: rawEmail,
     newPassword
   } = req?.body || {};
+  const email = rawEmail?.trim()?.toLowerCase();
 
 
   try {

@@ -162,6 +162,9 @@ export const handleCreateCourseEnrollment=async(req,res)=>{
 
     // update the number of students counts of the course
     const course=await PostCourseModel.findById(dataBody.courseId)
+    if (!course || course.isDisabled) {
+      throw new Error("course unavailable")
+    }
 
     course.student_count=course.student_count+1
 
@@ -180,7 +183,7 @@ export const handleCreateCourseEnrollment=async(req,res)=>{
     course.currentUserRating=dataBody.ratingValue
 
     // search 1st 12 courses and update accordingly, temp on fly if user enrolled
-    const courses=await PostCourseModel.find({}).limit(12).sort({createdAt:1})
+    const courses=await PostCourseModel.find({ isDisabled: { $ne: true } }).limit(12).sort({createdAt:1})
 
     // fetch all courses enrolled by the current user
     const myEnrolledCourses=await CourseEnrollmentModel.find({userId:dataBody.userId})
@@ -233,7 +236,7 @@ export const handleGetAllCourses = async (req, res) => {
      const userCertificates=await CourseCertsModel.find({studentId:userId}) 
 
     // retrieve all courses in order of latest first, 12 pagination step
-    const allCourses = await PostCourseModel.find({})
+    const allCourses = await PostCourseModel.find({ isDisabled: { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(12);
 
@@ -298,7 +301,7 @@ export const handleGetSimilarCourses = async (req, res) => {
     const enrolledCourses=await CourseEnrollmentModel.find({userId})
 
     // retrieve all courses in order of latest first, 12 pagination step
-    const allCourses = await PostCourseModel.find({'course_category.main':categoryMain})
+    const allCourses = await PostCourseModel.find({'course_category.main':categoryMain, isDisabled: { $ne: true }})
       .sort({ createdAt: -1 })
       .limit(12);
 
@@ -341,7 +344,7 @@ export const handleGetSimilarCourses = async (req, res) => {
 export const handleGetPopularCourses=async(req,res)=>{
   // retrieve all courses in order of latest first
   try {
-    const allPosts = await TechPostModal.find({})
+    const allPosts = await TechPostModal.find({ isDisabled: { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(12);
 
@@ -362,6 +365,9 @@ export const handleGetSpecificCourse = async (req,res) => {
     let allCourses=[]
     const course = await PostCourseModel.findById(courseId)
     if (course) {
+      if (course.isDisabled) {
+        throw new Error("course disabled!")
+      }
       allCourses.push(course)
     }
 
@@ -515,7 +521,7 @@ export const handleGetAllCoursesSearch=async(req,res)=>{
    
         // Initialize query
        const query = {
-         $and: []
+         $and: [{ isDisabled: { $ne: true } }]
        };
    
          // Handle course_titles search
@@ -642,7 +648,7 @@ export const handleGetRecommendedCourse=async(req,res)=>{
     
         // Initialize query
         const query = {
-          $and: []
+          $and: [{ isDisabled: { $ne: true } }]
         };
     
         // handle job_skill-set search
@@ -975,5 +981,3 @@ export const handleDeleteCourse = async (req, res) => {
     res.status(400).send(error?.error?.hostname?.includes('cloud') ? "failed to connect to the internet":error.message);
   }
 };
-
-
