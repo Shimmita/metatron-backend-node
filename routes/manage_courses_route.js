@@ -13,6 +13,7 @@ import {
   handleGetRecommendedCourse,
   handleGetSimilarCourses,
   handleGetSpecificCourse,
+  handleGetTopCourses,
   handleGetUserCerts,
   handleGetUserEnrolledCourses,
   handleUpdateCourse
@@ -32,6 +33,9 @@ coursesManageRouter.post(
   handleCreateNewCourse
 );
 
+
+// get all courses posts, userId for checking if user enrolled in any
+coursesManageRouter.get("/all/top", handleGetTopCourses);
 
 // get all courses posts, userId for checking if user enrolled in any
 coursesManageRouter.get("/all/:userId", handleGetAllCourses);
@@ -79,5 +83,4 @@ coursesManageRouter.put("/all/instructor/update/:id",handleAuthMiddleware, handl
 
 // delete post
 coursesManageRouter.delete("/all/delete/instructor/:userId/:courseId",handleAuthMiddleware, handleDeleteCourse);
-
 

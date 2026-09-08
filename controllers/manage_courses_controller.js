@@ -273,6 +273,19 @@ export const handleGetAllCourses = async (req, res) => {
   }
 };
 
+// get top public courses for guest previews
+export const handleGetTopCourses = async (req, res) => {
+  try {
+    const topCourses = await PostCourseModel.find({ isDisabled: { $ne: true } })
+      .sort({ createdAt: -1 })
+      .limit(3);
+
+    res.status(200).send(topCourses);
+  } catch (error) {
+    res.status(400).send(error.message);
+  }
+};
+
 
 
 

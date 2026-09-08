@@ -10,10 +10,8 @@ eventsManageRouter.post(
   handleCreateNewEvent
 );
 
-// get top 3 events
-eventsManageRouter.get("/all/top",
-  handleAuthMiddleware,
-  handleGetTopEvents)
+// get top public events
+eventsManageRouter.get("/all/top", handleGetTopEvents)
 
 // get events route
 eventsManageRouter.get("/all",handleGetAllEvents)
@@ -48,4 +46,3 @@ eventsManageRouter.delete("/delete/rsvp/:userId/:eventId",handleAuthMiddleware,h
 
 // delete of an event posted by the owner, owner deleting their event
 eventsManageRouter.delete("/delete/event/:userId/:eventId",handleAuthMiddleware,handleDeleteMyEvent)
-

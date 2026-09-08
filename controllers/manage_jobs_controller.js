@@ -980,7 +980,7 @@ export const handleGetRecommended = async (req, res) => {
 
 }
 
-// get top 5 jobs that are latest
+// get top public jobs that are latest
 export const handleGetTopJobs = async (req, res) => {
   // extract userId passed in the params
   const {
@@ -989,14 +989,14 @@ export const handleGetTopJobs = async (req, res) => {
 
   try {
     // sort them the latest first, exclude phone and email attached
-    const latestJobs = await JobPostModel.find({}, {
+    const latestJobs = await JobPostModel.find({ isDisabled: { $ne: true } }, {
         my_phone: 0,
         data_email: 0,
       })
       .sort({
         createdAt: -1
       })
-      .limit(5);
+      .limit(3);
 
     // fetch in the applied jobs, those containing the userId
     // will help to match if a particular top job is applied.

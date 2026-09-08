@@ -83,7 +83,7 @@ export const handleGetSpecificEvent=async(req,res)=>{
   }
 }
 
-// get top 3 events
+// get top public events
 export const handleGetTopEvents=async(req,res)=>{
   try {
 
