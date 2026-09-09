@@ -138,6 +138,32 @@ export const handleCreateCourseEnrollment=async(req,res)=>{
       throw new Error("courseId not provided!")
     }
 
+    const course=await PostCourseModel.findById(dataBody.courseId)
+    if (!course || course.isDisabled) {
+      throw new Error("course unavailable")
+    }
+
+    if (course.externalCourse && course.externalUrl) {
+      course.student_count=course.student_count+1
+
+      if (Number(dataBody.ratingValue) > 0) {
+        let currentRate=(course.course_rate_count+dataBody.ratingValue)/2
+        course.course_rate_count=Number(currentRate.toFixed(1))
+      }
+
+      await course.save()
+
+      course.currentUserEnrolled=false
+      course.currentUserRating=dataBody.ratingValue || 0
+
+      return res.status(200).send({
+        message:"opening external course",
+        redirectUrl:course.externalUrl,
+        data:course,
+        results:[]
+      })
+    }
+
     // check if the course already enrolled by the user
     const courseEnrolled=await CourseEnrollmentModel.findOne({
        $and: [{
@@ -161,11 +187,6 @@ export const handleCreateCourseEnrollment=async(req,res)=>{
     })
 
     // update the number of students counts of the course
-    const course=await PostCourseModel.findById(dataBody.courseId)
-    if (!course || course.isDisabled) {
-      throw new Error("course unavailable")
-    }
-
     course.student_count=course.student_count+1
 
     // course rating= avg (prev+current user rating, its pre-rate)
@@ -228,6 +249,9 @@ export const handleGetAllCourses = async (req, res) => {
   try {
     // extract userId
     let {userId}=req?.params || {}
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
+    const skip = (page - 1) * limit;
 
     // fetch all enrolled courses by the user
     const enrolledCourses=await CourseEnrollmentModel.find({userId})
@@ -237,8 +261,9 @@ export const handleGetAllCourses = async (req, res) => {
 
     // retrieve all courses in order of latest first, 12 pagination step
     const allCourses = await PostCourseModel.find({ isDisabled: { $ne: true } })
-      .sort({ createdAt: -1 })
-      .limit(12);
+      .sort({ createdAt: -1, _id: -1 })
+      .skip(skip)
+      .limit(limit);
 
     // results, after updating enrolled ones
     const results=allCourses.map(course=>{

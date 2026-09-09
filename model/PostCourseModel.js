@@ -164,6 +164,104 @@ const courseModel = new mongoose.Schema({
     required: false,
     default: 0
   },
+
+  externalCourse: {
+    type: Boolean,
+    required: false,
+    default: false
+  },
+
+  externalUrl: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true
+  },
+
+  externalProvider: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true
+  },
+
+  expiredAt: {
+    type: Date,
+    required: false,
+  },
+
+  expiredReason: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true,
+  },
+
+  externalAvailability: {
+    status: {
+      type: String,
+      required: false,
+      default: "",
+      enum: {
+        values: ["", "available", "expired", "unknown"],
+        message: "availability status must be available, expired or unknown",
+      },
+    },
+    checkedAt: {
+      type: Date,
+      required: false,
+    },
+    checkedUrl: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    statusCode: {
+      type: Number,
+      required: false,
+      default: 0,
+    },
+    reason: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    _id: false,
+  },
+
+  source: {
+    name: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    type: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    externalId: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    url: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    scrapedAt: {
+      type: Date,
+      required: false,
+    },
+    _id: false,
+  },
   
   
   // temp attributes section, affected by auth user 
@@ -204,5 +302,10 @@ const courseModel = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+courseModel.index({ "source.name": 1, "source.externalId": 1 });
+courseModel.index({ externalUrl: 1 });
+courseModel.index({ externalCourse: 1 });
+courseModel.index({ "externalAvailability.status": 1 });
 
 export default mongoose.model("courses", courseModel);

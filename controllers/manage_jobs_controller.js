@@ -7,6 +7,7 @@ import JobFeedBackModal from "../model/JobFeedBackModal.js";
 import JobPostModel from "../model/JobPostModel.js";
 import JobsAppliedModel from "../model/JobsAppliedModel.js";
 import personalModel from "../model/personalModel.js";
+import { getPlatformSettings } from "../services/platformSettingsService.js";
 import {
   deleteFromCloudinary,
   deleteDocumentFromCloudinary,
@@ -26,6 +27,95 @@ const CLOUDINARY_COURSES_DOCS_FOLDER = process.env.CLOUDINARY_COURSES_DOCS_FOLDE
 
 const sanitizeCvFilename = (filename = "cv.pdf") =>
   filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+const normalizeCountryName = (value = "") =>
+  `${value || ""}`
+    .replace(/^\+\d+\s+/, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[^a-zA-Z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const isOpenCountryWhitelist = (whitelist = "") => {
+  const normalized = normalizeCountryName(whitelist);
+  return !normalized || normalized === "all" || normalized === "global" || normalized === "worldwide";
+};
+
+const extractCountryCode = (value = "") => {
+  const parentheticalCode = `${value || ""}`.match(/\(([A-Z]{2})\)/i)?.[1];
+  const trimmed = `${value || ""}`.trim();
+  const directCode = /^[A-Z]{2}$/i.test(trimmed) ? trimmed : "";
+
+  return (parentheticalCode || directCode).toUpperCase();
+};
+
+const countryMatchesWhitelist = ({ country = "", countryCode = "", whitelist = "" } = {}) => {
+  if (isOpenCountryWhitelist(whitelist)) return true;
+
+  const normalizedCountry = normalizeCountryName(country);
+  const allowedCountry = normalizeCountryName(whitelist);
+  const normalizedCode = extractCountryCode(countryCode);
+  const allowedCode = extractCountryCode(whitelist);
+
+  return Boolean(
+    (normalizedCountry && normalizedCountry === allowedCountry) ||
+    (normalizedCode && allowedCode && normalizedCode === allowedCode)
+  );
+};
+
+const resolveCountryFromCoordinates = async (latitude, longitude) => {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw new Error("valid latitude and longitude are required");
+  }
+
+  const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&localityLanguage=en`;
+  const response = await fetch(url, {
+    headers: {
+      "user-agent": "MetatronJobApplication/1.0",
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`location lookup failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const country = data.countryName || data.country || "";
+
+  if (!country) {
+    throw new Error("unable to resolve country from this location");
+  }
+
+  return {
+    country,
+    countryCode: data.countryCode || "",
+    locality: data.locality || data.city || "",
+    principalSubdivision: data.principalSubdivision || "",
+  };
+};
+
+export const handleGetJobApplicationSettings = async (req, res) => {
+  try {
+    const settings = await getPlatformSettings();
+    res.status(200).send({
+      jobGeographicApplicationRestriction: Boolean(settings.jobGeographicApplicationRestriction),
+    });
+  } catch (error) {
+    res.status(400).send({ message: error.message || "Unable to load job application settings" });
+  }
+};
+
+export const handleResolveJobApplicationCountry = async (req, res) => {
+  try {
+    const latitude = Number(req.query.lat);
+    const longitude = Number(req.query.lon);
+    res.status(200).send(await resolveCountryFromCoordinates(latitude, longitude));
+  } catch (error) {
+    res.status(400).send({ message: error.message || "Unable to verify your location country" });
+  }
+};
 
 const buildCvStorageDescriptor = (data) => JSON.stringify(data);
 
@@ -237,14 +327,15 @@ export const handleGetAllJobs = async (req, res) => {
     const {userId } = req?.params || {}
 
     // extracting the query params from the frontend
-    const page = parseInt(req.query.page)+1 || 1;
-    const limit = parseInt(req.query.limit) || 6;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
     const skip = (page - 1) * limit;
 
     // sort them the latest first
-    const allJobs = await JobPostModel.find({})
+    const allJobs = await JobPostModel.find({ isDisabled: { $ne: true } })
       .sort({
-        createdAt: -1
+        createdAt: -1,
+        _id: -1
       })
       .skip(skip)
       .limit(limit);
@@ -1601,6 +1692,35 @@ export const handleJobApplication = async (req, res) => {
       // reject the application process
       if (!jobTarget) {
         throw new Error("job does not exist");
+      }
+
+      const settings = await getPlatformSettings();
+      if (settings.jobGeographicApplicationRestriction && !isOpenCountryWhitelist(jobTarget.whitelist)) {
+        const locationCoordinates = dataBody?.applicant?.locationCoordinates || {};
+        const latitude = Number(locationCoordinates.latitude ?? dataBody?.applicant?.locationLatitude);
+        const longitude = Number(locationCoordinates.longitude ?? dataBody?.applicant?.locationLongitude);
+
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          throw new Error("please allow location access so we can verify your application country");
+        }
+
+        const resolvedLocation = await resolveCountryFromCoordinates(latitude, longitude);
+
+        if (!countryMatchesWhitelist({
+          country: resolvedLocation.country,
+          countryCode: resolvedLocation.countryCode,
+          whitelist: jobTarget.whitelist,
+        })) {
+          throw new Error(`this job is restricted to applicants in ${jobTarget.whitelist}`);
+        }
+
+        dataBody.applicant.detectedCountry = resolvedLocation.country;
+        dataBody.applicant.detectedCountryCode = resolvedLocation.countryCode;
+        dataBody.applicant.locationSource = "browser-geolocation";
+        dataBody.applicant.country = resolvedLocation.country;
+        delete dataBody.applicant.locationCoordinates;
+        delete dataBody.applicant.locationLatitude;
+        delete dataBody.applicant.locationLongitude;
       }
 
       // if max applicants reject

@@ -26,6 +26,28 @@ const jobAppliedSchema = new mongoose.Schema({
       trim: true,
     },
 
+    detectedCountry: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+
+    detectedCountryCode: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+      uppercase: true,
+    },
+
+    locationSource: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+
     _id: false,
   },
 

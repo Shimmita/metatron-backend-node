@@ -36,6 +36,8 @@ import {
 } from "./routes/manage_post_route.js";
 import manage_premium_route from "./routes/manage_premium_route.js";
 import manageUsersRoute from "./routes/manage_users_route.js";
+import { startExternalExpiryCleanupCron } from "./services/externalExpiryCleanupCronService.js";
+import { startExternalScraperCron } from "./services/externalScraperCronService.js";
 const mongoDBSession = connectMongoStore(session);
 const app = express();
 app.use(bodyParser.json());
@@ -61,7 +63,11 @@ const environment=process.env.ENVIRONMENT_MODE
 mongoose
   .connect(environment==="SANDBOX" ? process.env.MONGO_CONNECTION_URI:
     process.env.MONGO_CONNECTION_URI_CLOUD)
-  .then(() => console.log(`connected to mongo database ${environment==="SANDBOX" ? "LOCAL":"CLOUD"}`))
+  .then(() => {
+    console.log(`connected to mongo database ${environment==="SANDBOX" ? "LOCAL":"CLOUD"}`);
+    startExternalScraperCron();
+    startExternalExpiryCleanupCron();
+  })
   .catch((err) => console.log("database connection Failed ", err));
 
 // listening for requests

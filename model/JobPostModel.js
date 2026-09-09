@@ -189,6 +189,106 @@ const jobSchema = new mongoose.Schema({
     },
   },
 
+  isDisabled: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  disabledReason: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true,
+  },
+  disabledBy: {
+    type: String,
+    required: false,
+    default: "",
+  },
+  disabledAt: {
+    type: Date,
+    required: false,
+  },
+  expiredAt: {
+    type: Date,
+    required: false,
+  },
+  expiredReason: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true,
+  },
+  externalAvailability: {
+    status: {
+      type: String,
+      required: false,
+      default: "",
+      enum: {
+        values: ["", "available", "expired", "unknown"],
+        message: "availability status must be available, expired or unknown",
+      },
+    },
+    checkedAt: {
+      type: Date,
+      required: false,
+    },
+    checkedUrl: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    statusCode: {
+      type: Number,
+      required: false,
+      default: 0,
+    },
+    reason: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    _id: false,
+  },
+
+  source: {
+    name: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    type: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    externalId: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    url: {
+      type: String,
+      required: false,
+      default: "",
+      trim: true,
+    },
+    postedAt: {
+      type: Date,
+      required: false,
+    },
+    scrapedAt: {
+      type: Date,
+      required: false,
+    },
+    _id: false,
+  },
+
   // below are temp values that varies based on user job activity
   // tracks current user application status
   currentUserApplied: {
@@ -224,5 +324,11 @@ const jobSchema = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+jobSchema.index({ "source.name": 1, "source.externalId": 1 });
+jobSchema.index({ website: 1 });
+jobSchema.index({ isDisabled: 1 });
+jobSchema.index({ status: 1 });
+jobSchema.index({ "externalAvailability.status": 1 });
 
 export default mongoose.model("Jobs", jobSchema);

@@ -153,14 +153,15 @@ export const handleGetAllTechiePost = async (req, res) => {
     const userSession=req.session
 
     // extracting the query params from the frontend
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
     const skip = (page - 1) * limit;
 
     // retrieve all posts in order of latest first
     const allPosts = await TechPostModal.find({ isDisabled: { $ne: true } })
       .sort({
-        createdAt: -1
+        createdAt: -1,
+        _id: -1
       })
       .skip(skip)
       .limit(limit);

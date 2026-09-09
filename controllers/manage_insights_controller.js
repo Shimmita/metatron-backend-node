@@ -8,6 +8,13 @@ export const getPlatformInsights = async (req, res) => {
   try {
     const insights = [];
     const tools=[]
+    const toolTitles = new Set();
+    const visibleFilter = { isDisabled: { $ne: true } };
+    const activeJobFilter = { ...visibleFilter, status: "active" };
+    const leaderFrom = (records = []) => {
+      const item = records.find((record) => record?._id);
+      return item ? { label: item._id, count: item.count || 0 } : null;
+    };
 
     const [
       developersTotal,
@@ -16,18 +23,58 @@ export const getPlatformInsights = async (req, res) => {
       eventsTotal,
       coursesTotal,
       postsTotal,
+      upcomingEventsTotal,
+      remoteJobsTotal,
+      externalJobsTotal,
+      externalEventsTotal,
+      externalCoursesTotal,
+      postEngagement,
+      eventAttendance,
+      courseLearning,
     ] = await Promise.all([
       personalModel.countDocuments(),
-      JobPostModel.countDocuments({ status: "active" }),
-      JobPostModel.countDocuments(),
-      AddEventModel.countDocuments(),
-      PostCourseModel.countDocuments(),
-      TechPostModel.countDocuments(),
+      JobPostModel.countDocuments(activeJobFilter),
+      JobPostModel.countDocuments(visibleFilter),
+      AddEventModel.countDocuments(visibleFilter),
+      PostCourseModel.countDocuments(visibleFilter),
+      TechPostModel.countDocuments(visibleFilter),
+      AddEventModel.countDocuments({ ...visibleFilter, dateHosted: { $gte: new Date() } }),
+      JobPostModel.countDocuments({ ...activeJobFilter, "jobtypeaccess.access": "Remote" }),
+      JobPostModel.countDocuments({ ...visibleFilter, website: { $nin: ["", null] } }),
+      AddEventModel.countDocuments({ ...visibleFilter, externalEvent: true }),
+      PostCourseModel.countDocuments({ ...visibleFilter, externalCourse: true }),
+      TechPostModel.aggregate([
+        { $match: visibleFilter },
+        {
+          $group: {
+            _id: null,
+            likes: { $sum: "$post_liked.clicks" },
+            comments: { $sum: "$post_comments.count" },
+            saves: { $sum: "$favorite_count" },
+            githubClicks: { $sum: "$post_github.clicks" },
+          },
+        },
+      ]),
+      AddEventModel.aggregate([
+        { $match: visibleFilter },
+        { $group: { _id: null, rsvps: { $sum: "$users.count" } } },
+      ]),
+      PostCourseModel.aggregate([
+        { $match: visibleFilter },
+        {
+          $group: {
+            _id: null,
+            students: { $sum: "$student_count" },
+            averageRating: { $avg: "$course_rate_count" },
+          },
+        },
+      ]),
     ]);
 
     // 1. Top Skills
     const topSkills = await personalModel.aggregate([
       { $unwind: "$selectedSkills" },
+      { $match: { selectedSkills: { $nin: ["", null] } } },
       { $group: { _id: "$selectedSkills", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 2 }
@@ -43,7 +90,9 @@ export const getPlatformInsights = async (req, res) => {
  
     // 3. Most Requested Skills in Jobs
     const topJobSkills = await JobPostModel.aggregate([
+      { $match: visibleFilter },
       { $unwind: "$skills" },
+      { $match: { skills: { $nin: ["", null] } } },
       { $group: { _id: "$skills", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 3 }
@@ -58,9 +107,47 @@ export const getPlatformInsights = async (req, res) => {
 
     // 4. popular job posts
     const topJobPosts = await JobPostModel.aggregate([
+      { $match: visibleFilter },
+      { $match: { category: { $nin: ["", null] } } },
       { $group: { _id: "$category", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 1 }
+    ]);
+
+    const [
+      topPostCategories,
+      topEventCategories,
+      topCourseCategories,
+      topExternalCourseProviders,
+    ] = await Promise.all([
+      TechPostModel.aggregate([
+        { $match: visibleFilter },
+        { $match: { "post_category.main": { $nin: ["", null] } } },
+        { $group: { _id: "$post_category.main", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+      AddEventModel.aggregate([
+        { $match: visibleFilter },
+        { $match: { category: { $nin: ["", null] } } },
+        { $group: { _id: "$category", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+      PostCourseModel.aggregate([
+        { $match: visibleFilter },
+        { $match: { "course_category.main": { $nin: ["", null] } } },
+        { $group: { _id: "$course_category.main", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+      PostCourseModel.aggregate([
+        { $match: { ...visibleFilter, externalCourse: true } },
+        { $match: { externalProvider: { $nin: ["", null] } } },
+        { $group: { _id: "$externalProvider", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
     ]);
 
     topJobPosts.forEach(job => {
@@ -72,7 +159,8 @@ export const getPlatformInsights = async (req, res) => {
 
     // updating tools, the most skills by jobs and users
     topSkills.forEach(skill => {
-        if (!tools.includes(skill._id)) {
+        if (!toolTitles.has(skill._id)) {
+        toolTitles.add(skill._id);
         tools.push({
         title: skill._id,
       });
@@ -81,7 +169,8 @@ export const getPlatformInsights = async (req, res) => {
     });
 
     topJobSkills.forEach(skill => {
-      if (!tools.includes(skill._id)) {
+      if (!toolTitles.has(skill._id)) {
+        toolTitles.add(skill._id);
         tools.push({
         title: skill._id});
     }
@@ -97,6 +186,42 @@ export const getPlatformInsights = async (req, res) => {
           events: eventsTotal,
           courses: coursesTotal,
           posts: postsTotal,
+        },
+        analytics: {
+          opportunities: activeJobsTotal + upcomingEventsTotal + coursesTotal,
+          upcomingEvents: upcomingEventsTotal,
+          remoteJobs: remoteJobsTotal,
+          externalJobs: externalJobsTotal,
+          externalEvents: externalEventsTotal,
+          externalCourses: externalCoursesTotal,
+          totalEngagement:
+            (postEngagement[0]?.likes || 0) +
+            (postEngagement[0]?.comments || 0) +
+            (postEngagement[0]?.saves || 0) +
+            (postEngagement[0]?.githubClicks || 0) +
+            (eventAttendance[0]?.rsvps || 0) +
+            (courseLearning[0]?.students || 0),
+          postSignals: {
+            likes: postEngagement[0]?.likes || 0,
+            comments: postEngagement[0]?.comments || 0,
+            saves: postEngagement[0]?.saves || 0,
+            githubClicks: postEngagement[0]?.githubClicks || 0,
+          },
+          eventRsvps: eventAttendance[0]?.rsvps || 0,
+          courseStudents: courseLearning[0]?.students || 0,
+          averageCourseRating: Number((courseLearning[0]?.averageRating || 0).toFixed(1)),
+          activeJobShare: jobsTotal ? Math.round((activeJobsTotal / jobsTotal) * 100) : 0,
+          remoteJobShare: activeJobsTotal ? Math.round((remoteJobsTotal / activeJobsTotal) * 100) : 0,
+          externalCourseShare: coursesTotal ? Math.round((externalCoursesTotal / coursesTotal) * 100) : 0,
+        },
+        leaders: {
+          userSkill: leaderFrom(topSkills),
+          jobSkill: leaderFrom(topJobSkills),
+          jobCategory: leaderFrom(topJobPosts),
+          postCategory: leaderFrom(topPostCategories),
+          eventCategory: leaderFrom(topEventCategories),
+          courseCategory: leaderFrom(topCourseCategories),
+          externalCourseProvider: leaderFrom(topExternalCourseProviders),
         },
         insights,
         tools

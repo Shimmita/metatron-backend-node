@@ -13,6 +13,7 @@ import {
   handleGetAllJobsHiring,
   handleGetAllJobsSearch,
   handleGetExternalJobs,
+  handleGetJobApplicationSettings,
   handleGetJobApplicantsHiring,
   handleGetMyJobApplications,
   handleGetMyJobStats,
@@ -22,6 +23,7 @@ import {
   handleGetTopJobs,
   handleGetVerifiedJobs,
   handleJobApplication,
+  handleResolveJobApplicationCountry,
   handleUpdateEntireJobHiring,
   handleUpdateJobApplicationStatusHiring,
   handleUpdateJobStatusHiring,
@@ -34,6 +36,12 @@ const uploadMulter = multer({ storage: multer.memoryStorage() });
 export const manageJobsRouter = express.Router();
 
 // JOB-SEEKER
+
+// current application guard settings
+manageJobsRouter.get("/application/settings", handleGetJobApplicationSettings);
+
+// resolve browser geolocation coordinates to a country
+manageJobsRouter.get("/application/location/country", handleAuthMiddleware, handleResolveJobApplicationCountry);
 
 // apply for new job from the posted
 manageJobsRouter.post(
@@ -124,7 +132,6 @@ manageJobsRouter.delete("/all/hiring/job/delete/:emailId/:jobId",handleAuthMiddl
 
 // download the cv of the user, it will create a signedURL and sent to the frontend
 manageJobsRouter.post("/all/download/cv/:emailId/:jobId", handleAuthMiddleware,handleDownloadDocumentHiring);
-
 
 
 

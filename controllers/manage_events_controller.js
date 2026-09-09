@@ -36,14 +36,15 @@ export const handleCreateNewEvent = async (req, res) => {
 export const handleGetAllEvents=async(req,res)=>{
   try {
     // extracting the query params from the frontend
-    const page = parseInt(req.query.page)+1 || 1;
-    const limit = parseInt(req.query.limit) || 6;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
     const skip = (page - 1) * limit;
 
     // fetch the data in db
     const eventsData=await AddEventModel.find({ isDisabled: { $ne: true } })
     .sort({
-      createdAt:-1
+      createdAt:-1,
+      _id:-1
     })
     .skip(skip)
     .limit(limit)
@@ -342,12 +343,13 @@ export const handleCreateEventRSVP=async(req,res)=>{
     eventObject.users.value=[...eventObject.users.value,userId]
 
     // save the eventItem with the updated changes
-    eventObject.save()
+    await eventObject.save()
    
     // sending the success response to the frontend/client
     res.status(200).json({
       message:'RSVP made successfully!',
-      data:eventObject
+      data:eventObject,
+      redirectUrl:eventObject.externalEvent ? eventObject.hostLink : ""
     })    
   } catch (error) {
     // log error

@@ -5,6 +5,12 @@ import MessageModel from "../model/MessageModel.js";
 import PostCourseModel from "../model/PostCourseModel.js";
 import TechPostModel from "../model/TechPostModel.js";
 import personalModel from "../model/personalModel.js";
+import { cleanupExpiredExternalResources } from "../services/externalAvailabilityCleanupService.js";
+import { scrapeAndSaveExternalTechCourses } from "../services/courseScraperService.js";
+import { scrapeAndSaveUpcomingTechEvents } from "../services/eventScraperService.js";
+import { scrapeAndSaveLatestTechJobs } from "../services/jobScraperService.js";
+import { backfillExternalScrapedLogos } from "../services/scraperLogoService.js";
+import { getPlatformSettings, updatePlatformSettings } from "../services/platformSettingsService.js";
 
 const ADMIN_ROLES = ["admin", "user"];
 const JOB_STATUSES = ["active", "inactive"];
@@ -39,12 +45,12 @@ const resourceConfig = {
   },
   events: {
     model: AddEventModel,
-    search: ["title", "about", "category", "ownerName", "location.country", "location.state"],
+    search: ["title", "about", "category", "ownerName", "ownerSpecialize", "hostAbout", "location.country", "location.state", "source.name"],
     ownerId: (record) => record?.ownerId,
   },
   courses: {
     model: PostCourseModel,
-    search: ["course_title", "course_description", "course_instructor.instructorName", "course_category.main"],
+    search: ["course_title", "course_description", "course_instructor.instructorName", "course_category.main", "externalProvider", "source.name"],
     ownerId: (record) => record?.course_instructor?.instructorId,
   },
 };
@@ -249,6 +255,24 @@ export const handleGetAdminResource = async (req, res) => {
   }
 };
 
+export const handleGetAdminSettings = async (req, res) => {
+  try {
+    const settings = await getPlatformSettings();
+    res.status(200).send(settings);
+  } catch (error) {
+    res.status(400).send({ message: error.message || "Unable to load admin settings" });
+  }
+};
+
+export const handleUpdateAdminSettings = async (req, res) => {
+  try {
+    const settings = await updatePlatformSettings(req.body || {}, `${req.adminUser?._id || ""}`);
+    res.status(200).send(settings);
+  } catch (error) {
+    res.status(400).send({ message: error.message || "Unable to update admin settings" });
+  }
+};
+
 export const handleToggleAdminResourceDisabled = async (req, res) => {
   try {
     const { resource, id } = req.params;
@@ -375,6 +399,110 @@ export const handleUpdateJobStatusAdmin = async (req, res) => {
     res.status(200).send(job);
   } catch (error) {
     res.status(400).send({ message: error.message });
+  }
+};
+
+export const handleScrapeLatestTechJobsAdmin = async (req, res) => {
+  try {
+    const { dryRun = false } = req.body || {};
+    const limit = Math.min(Number.parseInt(req.body?.limit, 10) || 160, 300);
+    const perSourceLimit = Math.min(Number.parseInt(req.body?.perSourceLimit, 10) || 35, 80);
+
+    const result = await scrapeAndSaveLatestTechJobs({
+      limit,
+      perSourceLimit,
+      dryRun: Boolean(dryRun),
+    });
+    const logoBackfill = dryRun ? null : await backfillExternalScrapedLogos({ limit: 45 });
+
+    res.status(200).send({
+      message: dryRun
+        ? `Structured ${result.structured} scraped tech jobs for review`
+        : `Inserted ${result.inserted} new tech jobs and refreshed scraped logos`,
+      ...result,
+      logoBackfill,
+    });
+  } catch (error) {
+    res.status(400).send({
+      message: error.message || "Unable to update jobs from external sources",
+    });
+  }
+};
+
+export const handleScrapeUpcomingTechEventsAdmin = async (req, res) => {
+  try {
+    const { dryRun = false } = req.body || {};
+    const limit = Math.min(Number.parseInt(req.body?.limit, 10) || 140, 300);
+    const perSourceLimit = Math.min(Number.parseInt(req.body?.perSourceLimit, 10) || 35, 80);
+
+    const result = await scrapeAndSaveUpcomingTechEvents({
+      limit,
+      perSourceLimit,
+      dryRun: Boolean(dryRun),
+    });
+    const logoBackfill = dryRun ? null : await backfillExternalScrapedLogos({ limit: 45 });
+
+    res.status(200).send({
+      message: dryRun
+        ? `Structured ${result.structured} scraped tech events for review`
+        : `Inserted ${result.inserted} new tech events and refreshed scraped logos`,
+      ...result,
+      logoBackfill,
+    });
+  } catch (error) {
+    res.status(400).send({
+      message: error.message || "Unable to update events from external sources",
+    });
+  }
+};
+
+export const handleScrapeExternalTechCoursesAdmin = async (req, res) => {
+  try {
+    const { dryRun = false } = req.body || {};
+    const limit = Math.min(Number.parseInt(req.body?.limit, 10) || 140, 300);
+    const perSourceLimit = Math.min(Number.parseInt(req.body?.perSourceLimit, 10) || 35, 80);
+
+    const result = await scrapeAndSaveExternalTechCourses({
+      limit,
+      perSourceLimit,
+      dryRun: Boolean(dryRun),
+    });
+    const logoBackfill = dryRun ? null : await backfillExternalScrapedLogos({ limit: 45 });
+
+    res.status(200).send({
+      message: dryRun
+        ? `Structured ${result.structured} external tech courses for review`
+        : `Inserted ${result.inserted} new external tech courses and refreshed scraped logos`,
+      ...result,
+      logoBackfill,
+    });
+  } catch (error) {
+    res.status(400).send({
+      message: error.message || "Unable to update courses from external sources",
+    });
+  }
+};
+
+export const handleCleanupExpiredExternalResourcesAdmin = async (req, res) => {
+  try {
+    const { dryRun = false } = req.body || {};
+    const limitPerModel = Math.min(Number.parseInt(req.body?.limitPerModel, 10) || 80, 250);
+
+    const result = await cleanupExpiredExternalResources({
+      limitPerModel,
+      dryRun: Boolean(dryRun),
+    });
+
+    res.status(200).send({
+      message: dryRun
+        ? `Checked external availability without expiring records`
+        : `Expired unavailable external jobs, events and courses`,
+      ...result,
+    });
+  } catch (error) {
+    res.status(400).send({
+      message: error.message || "Unable to clean expired external resources",
+    });
   }
 };
 
