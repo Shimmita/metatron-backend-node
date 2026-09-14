@@ -38,7 +38,10 @@ export const postManageRouter = express.Router();
 //create post route
 postManageRouter.post(
   "/create",
-  uploadMulter.single("image"),
+  uploadMulter.fields([
+    { name: "image", maxCount: 1 },
+    { name: "images", maxCount: 3 },
+  ]),
   handleCreateNewPost
 );
 

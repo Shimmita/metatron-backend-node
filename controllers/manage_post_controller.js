@@ -18,6 +18,18 @@ import {
 import {
   CompressImageFunction
 } from "../utils/compressImage.js";
+
+const attachPostToGroup = async (groupName, postId) => {
+  if (!groupName || groupName === " ") return;
+
+  const tempGroup = await GroupCommunityModel.findOne({ name: groupName });
+  if (!tempGroup) return;
+
+  tempGroup.post_count = tempGroup.post_count + 1;
+  tempGroup.posts = [...tempGroup.posts, postId];
+  await tempGroup.save();
+};
+
 // creating of new post
 export const handleCreateNewPost = async (req, res) => {
   try {
@@ -25,74 +37,57 @@ export const handleCreateNewPost = async (req, res) => {
     const data = JSON.parse(req?.body.post);
 
     // group name for saving the name of the post in the respective group
-    const {group:groupName}=data
+    const { group: groupName } = data;
+    let imageDescriptions = [];
+    try {
+      imageDescriptions = JSON.parse(req?.body?.post_image_descriptions || "[]");
+    } catch (error) {
+      imageDescriptions = [];
+    }
+    const uploadedFiles = req?.files?.images?.length
+      ? req.files.images
+      : req?.files?.image || (req?.file ? [req.file] : []);
 
     //   check if user has file
-    if (req?.file) {
-      // Compress and convert the image to AVIF format
-      const compressedImageBuffer = await CompressImageFunction(req.file.buffer)
+    if (uploadedFiles.length > 0) {
+      const post_images = await Promise.all(
+        uploadedFiles.map(async (file, index) => {
+          // Compress and convert the image to AVIF format
+          const compressedImageBuffer = await CompressImageFunction(file.buffer);
 
-      // Upload the compressed AVIF image to Cloudinary
-      const result = await uploadToCloudinary(
-        compressedImageBuffer,
-        process.env.CLOUDINARY_POST_IMAGES_FOLDER
+          // Upload the compressed AVIF image to Cloudinary
+          const result = await uploadToCloudinary(
+            compressedImageBuffer,
+            process.env.CLOUDINARY_POST_IMAGES_FOLDER
+          );
+
+          return {
+            url: result.secure_url,
+            url_id: result.public_id,
+            description: imageDescriptions[index] || "",
+            position: index + 1
+          };
+        })
       );
 
-      // getting avatar url and ID from the result of cloudinary upload
-      const post_url = result.secure_url;
-      const post_url_id = result.public_id;
-
       // create new post
-      const post=await TechPostModal.create({
+      const post = await TechPostModal.create({
         ...data,
-        post_url,
-        post_url_id
+        post_url: data.post_url || post_images[0]?.url,
+        post_url_id: post_images[0]?.url_id,
+        post_images
       });
 
       // update the post in the groups if any
-      if (groupName && groupName!==" ") {
-        // search from db the group with matching name
-        const tempGroup= await GroupCommunityModel.findOne({name:groupName})
-        // group not found
-        if (!tempGroup) {
-          return
-        }
-
-        // increment the counter
-        tempGroup.post_count=tempGroup.post_count+1
-
-        // add the id of the post into the attribute posts of the group
-        tempGroup.posts=[...tempGroup.posts,post.id]
-
-        // save the updated group details
-        await tempGroup.save()
-
-      }
+      await attachPostToGroup(groupName, post.id);
 
       res.status(200).send("post uploaded successfully");
     } else {
       // save the user they have no file
-      const post=await TechPostModal.create(data);
+      const post = await TechPostModal.create(data);
 
       // update the post in the groups if any
-      if (groupName && groupName!==" ") {
-        // search from db the group with matching name
-        const tempGroup= await GroupCommunityModel.findOne({name:groupName})
-        // group not found
-        if (!tempGroup) {
-          return
-        }
-
-        // increment the counter
-        tempGroup.post_count=tempGroup.post_count+1
-
-        // add the id of the post into the attribute posts of the group
-        tempGroup.posts=[...tempGroup.posts,post.id]
-
-        // save the updated group details
-        await tempGroup.save()
-
-      }
+      await attachPostToGroup(groupName, post.id);
 
       res.status(200).send("post uploaded successfully");
     }
@@ -331,7 +326,13 @@ export const handleDeleteUserPost = async (req, res) => {
 
     // check if the post contains post_url_id means 
     // image is in cloudinary so delete it first
-    if (post.post_url_id?.length > 1) {
+    if (post.post_images?.length > 0) {
+      await Promise.all(
+        post.post_images
+          .filter((image) => image?.url_id)
+          .map((image) => deleteFromCloudinary(image.url_id))
+      )
+    } else if (post.post_url_id?.length > 1) {
       await deleteFromCloudinary(post.post_url_id)
     }
 

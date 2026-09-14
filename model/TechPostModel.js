@@ -86,6 +86,33 @@ const commentSchema = new mongoose.Schema({
 
 });
 
+const postImageSchema = new mongoose.Schema({
+  url: {
+    type: String,
+    trim: true,
+    required: true,
+    default: ""
+  },
+  url_id: {
+    type: String,
+    trim: true,
+    required: false,
+    default: ""
+  },
+  description: {
+    type: String,
+    trim: true,
+    required: false,
+    default: ""
+  },
+  position: {
+    type: Number,
+    required: false,
+    default: 1
+  },
+  _id: false
+});
+
 // main schema
 const postSchema = new mongoose.Schema({
   post_owner: ownerDetails,
@@ -105,6 +132,12 @@ const postSchema = new mongoose.Schema({
     trim: true,
     required: false,
     default: ""
+  },
+  post_images: {
+    type: [postImageSchema],
+    required: false,
+    default: [],
+    _id: false
   },
   post_body: {
     type: String,
