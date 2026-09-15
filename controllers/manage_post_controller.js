@@ -12,12 +12,56 @@ import {
 } from "../model/TechPostModel.js";
 import TechPostRepliesModel from "../model/TechPostRepliesModel.js";
 import {
+  deleteDocumentFromCloudinary,
   deleteFromCloudinary,
+  uploadBase64DocumentToCloudinary,
   uploadToCloudinary
 } from "../utils/cloudinary.js";
 import {
   CompressImageFunction
 } from "../utils/compressImage.js";
+
+const MAX_POST_PDF_SIZE = 20 * 1024 * 1024;
+const CLOUDINARY_POST_DOCUMENTS_FOLDER =
+  process.env.CLOUDINARY_POST_DOCUMENTS_FOLDER ||
+  process.env.CLOUDINARY_COURSES_DOCS_FOLDER ||
+  "metatron/post-documents";
+
+const sanitizeDocumentFilename = (filename = "metatron-document.pdf") =>
+  filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+const getPostDocument = async (postId, documentIndex) => {
+  const post = await TechPostModel.findById(postId);
+  if (!post || post.isDisabled) {
+    throw new Error("post does not exist");
+  }
+
+  const index = Number.parseInt(documentIndex, 10);
+  const document = post.post_documents?.[Number.isNaN(index) ? 0 : index];
+  if (!document?.url) {
+    throw new Error("PDF document does not exist");
+  }
+
+  return document;
+};
+
+const sendPostPdfResponse = async (res, document, shouldDownload = false) => {
+  const pdfResponse = await fetch(document.url);
+  if (!pdfResponse.ok) {
+    throw new Error(`PDF document failed to load (${pdfResponse.status})`);
+  }
+
+  const fileName = sanitizeDocumentFilename(document.name || "metatron-document.pdf");
+  const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `${shouldDownload ? "attachment" : "inline"}; filename="${fileName}"`
+  );
+  res.setHeader("Cache-Control", "private, max-age=300");
+  res.status(200).send(pdfBuffer);
+};
 
 const attachPostToGroup = async (groupName, postId) => {
   if (!groupName || groupName === " ") return;
@@ -28,6 +72,24 @@ const attachPostToGroup = async (groupName, postId) => {
   tempGroup.post_count = tempGroup.post_count + 1;
   tempGroup.posts = [...tempGroup.posts, postId];
   await tempGroup.save();
+};
+
+export const handleViewPostDocument = async (req, res) => {
+  try {
+    const document = await getPostDocument(req.params.postId, req.params.documentIndex);
+    await sendPostPdfResponse(res, document, false);
+  } catch (error) {
+    res.status(404).send(error.message || "Unable to load PDF document");
+  }
+};
+
+export const handleDownloadPostDocument = async (req, res) => {
+  try {
+    const document = await getPostDocument(req.params.postId, req.params.documentIndex);
+    await sendPostPdfResponse(res, document, true);
+  } catch (error) {
+    res.status(404).send(error.message || "Unable to download PDF document");
+  }
 };
 
 // creating of new post
@@ -47,6 +109,35 @@ export const handleCreateNewPost = async (req, res) => {
     const uploadedFiles = req?.files?.images?.length
       ? req.files.images
       : req?.files?.image || (req?.file ? [req.file] : []);
+    const uploadedDocuments = req?.files?.documents || [];
+
+    if (uploadedDocuments.some((file) => file.mimetype !== "application/pdf")) {
+      throw new Error("Only PDF documents can be attached to posts");
+    }
+
+    if (uploadedDocuments.some((file) => file.size > MAX_POST_PDF_SIZE)) {
+      throw new Error("PDF documents must be 20MB or smaller");
+    }
+
+    const post_documents = await Promise.all(
+      uploadedDocuments.map(async (file) => {
+        const safeName = sanitizeDocumentFilename(file.originalname);
+        const base64Pdf = `data:application/pdf;base64,${file.buffer.toString("base64")}`;
+        const result = await uploadBase64DocumentToCloudinary(
+          base64Pdf,
+          CLOUDINARY_POST_DOCUMENTS_FOLDER,
+          safeName
+        );
+
+        return {
+          url: result.secure_url,
+          publicId: result.public_id,
+          name: file.originalname,
+          size: file.size,
+          format: "pdf"
+        };
+      })
+    );
 
     //   check if user has file
     if (uploadedFiles.length > 0) {
@@ -75,7 +166,8 @@ export const handleCreateNewPost = async (req, res) => {
         ...data,
         post_url: data.post_url || post_images[0]?.url,
         post_url_id: post_images[0]?.url_id,
-        post_images
+        post_images,
+        post_documents
       });
 
       // update the post in the groups if any
@@ -84,7 +176,10 @@ export const handleCreateNewPost = async (req, res) => {
       res.status(200).send("post uploaded successfully");
     } else {
       // save the user they have no file
-      const post = await TechPostModal.create(data);
+      const post = await TechPostModal.create({
+        ...data,
+        post_documents
+      });
 
       // update the post in the groups if any
       await attachPostToGroup(groupName, post.id);
@@ -95,7 +190,7 @@ export const handleCreateNewPost = async (req, res) => {
     let message = `${error.message}`;
     if (message.toLowerCase().includes("cloudinary")) {
       message = "please check your internet connection";
-    } else {
+    } else if (!message.toLowerCase().includes("pdf")) {
       message = "something went wrong try again";
     }
     res.status(400).send(message);
@@ -334,6 +429,14 @@ export const handleDeleteUserPost = async (req, res) => {
       )
     } else if (post.post_url_id?.length > 1) {
       await deleteFromCloudinary(post.post_url_id)
+    }
+
+    if (post.post_documents?.length > 0) {
+      await Promise.all(
+        post.post_documents
+          .filter((document) => document?.publicId)
+          .map((document) => deleteDocumentFromCloudinary(document.publicId))
+      )
     }
 
     // proceed deletion of the post

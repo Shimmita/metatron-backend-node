@@ -113,6 +113,39 @@ const postImageSchema = new mongoose.Schema({
   _id: false
 });
 
+const postDocumentSchema = new mongoose.Schema({
+  url: {
+    type: String,
+    trim: true,
+    required: true,
+    default: ""
+  },
+  publicId: {
+    type: String,
+    trim: true,
+    required: false,
+    default: ""
+  },
+  name: {
+    type: String,
+    trim: true,
+    required: false,
+    default: ""
+  },
+  size: {
+    type: Number,
+    required: false,
+    default: 0
+  },
+  format: {
+    type: String,
+    trim: true,
+    required: false,
+    default: "pdf"
+  },
+  _id: false
+});
+
 // main schema
 const postSchema = new mongoose.Schema({
   post_owner: ownerDetails,
@@ -135,6 +168,12 @@ const postSchema = new mongoose.Schema({
   },
   post_images: {
     type: [postImageSchema],
+    required: false,
+    default: [],
+    _id: false
+  },
+  post_documents: {
+    type: [postDocumentSchema],
     required: false,
     default: [],
     _id: false

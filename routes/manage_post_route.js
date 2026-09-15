@@ -17,6 +17,7 @@ import {
   handleGetSpecificPostDetails,
   handleGetTopPosts,
   handleGithubIncremental,
+  handleDownloadPostDocument,
   handlePostCommentsCreate,
   handlePostFavoriteCreate,
   handlePostLiking,
@@ -27,21 +28,69 @@ import {
   handleUpdateEditCommentReply,
   handleUpdateUserPost,
   handleUpdatingOfPost,
+  handleViewPostDocument,
 } from "../controllers/manage_post_controller.js";
+const MAX_POST_PDF_SIZE = 20 * 1024 * 1024;
+
+const postUploadFilter = (req, file, cb) => {
+  if (file.fieldname === "documents") {
+    if (file.mimetype !== "application/pdf") {
+      cb(new Error("Only PDF documents can be attached to posts"));
+      return;
+    }
+
+    cb(null, true);
+    return;
+  }
+
+  if (["image", "images"].includes(file.fieldname)) {
+    if (!file.mimetype?.startsWith("image/")) {
+      cb(new Error("Only image files can be attached as post media"));
+      return;
+    }
+
+    cb(null, true);
+    return;
+  }
+
+  cb(new Error("Unsupported post attachment field"));
+};
+
 // Set up multer for file uploads
 const uploadMulter = multer({
-  storage: multer.memoryStorage()
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_POST_PDF_SIZE,
+  },
+  fileFilter: postUploadFilter
 });
+
+const handlePostUpload = (req, res, next) => {
+  uploadMulter.fields([
+    { name: "image", maxCount: 1 },
+    { name: "images", maxCount: 3 },
+    { name: "documents", maxCount: 1 },
+  ])(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      res.status(400).send("Post attachments must be 20MB or smaller");
+      return;
+    }
+
+    res.status(400).send(error.message || "Unable to upload post attachments");
+  });
+};
 
 export const postManageRouter = express.Router();
 
 //create post route
 postManageRouter.post(
   "/create",
-  uploadMulter.fields([
-    { name: "image", maxCount: 1 },
-    { name: "images", maxCount: 3 },
-  ]),
+  handlePostUpload,
   handleCreateNewPost
 );
 
@@ -53,6 +102,12 @@ postManageRouter.post("/all", handleGetAllFilteredPosts);
 
 // get top posts
 postManageRouter.get("/top", handleGetTopPosts);
+
+// view a post PDF document inline
+postManageRouter.get("/document/:postId/:documentIndex/view", handleViewPostDocument);
+
+// download a post PDF document
+postManageRouter.get("/document/:postId/:documentIndex/download", handleDownloadPostDocument);
 
 // get specific post
 postManageRouter.get("/all/:id", handleGetSpecificPostDetails);
