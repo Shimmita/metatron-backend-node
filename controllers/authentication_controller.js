@@ -1,4 +1,3 @@
-import Brevo from '@getbrevo/brevo';
 import bcrypt from "bcrypt";
 import admin from "firebase-admin";
 import sharp from "sharp";
@@ -6,6 +5,7 @@ import validator from "validator";
 import EmailVerificationSchema from "../model/EmailVerificationModel.js";
 import { default as PersonalModel, default as personalModel } from "../model/personalModel.js";
 import ResetCodeModal from "../model/ResetCodeModal.js";
+import { sendEmailWithBrevo } from "../services/emailDeliveryService.js";
 import {
   uploadToCloudinary
 } from "../utils/cloudinary.js";
@@ -13,7 +13,70 @@ import { generateResetCode } from "../utils/codeGenerator.js";
 
 // msg sent to frontend after successful registration
 const successMsg =
-  "Your account has been created successfully please login to verify your email.";
+  "Your account has been created successfully. Check your email for the verification code.";
+
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+
+const getEmailVerificationExpiry = () => new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+
+const hasVerificationCodeExpired = (record) => {
+  if (!record?.expiresAt) {
+    return true;
+  }
+
+  return record.expiresAt.getTime() <= Date.now();
+};
+
+const buildVerificationEmailHtml = ({ name, code }) => `
+  <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Email Verification Code</title>
+      <style>
+        body { font-family: sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #fff;
+          border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
+        h1 { color: #333; }
+        .code { font-size: 24px; font-weight: bold; color: #007bff; margin: 20px 0; text-align: center; }
+        .note { font-size: 14px; color: #777; }
+        .footer { margin-top: 20px; font-size: 12px; color: #999; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Email Verification Code</h1>
+        <p>Hi ${name || "there"},</p> <br/>
+        <p>Thank you for signing up! Please use the verification code below to confirm your email address:</p>
+        <div class="code">${code}</div>
+        <p class="note">This code is valid for 24 hours. If you did not request this, please ignore this email.</p>
+        <div class="footer">© ${new Date().getFullYear()} Metatron Dev Platform. All rights reserved.</div>
+      </div>
+    </body>
+  </html>
+`;
+
+const sendEmailVerificationCode = async ({ email, name }) => {
+  const existingRecord = await EmailVerificationSchema.findOne({ email });
+  const shouldReuseCode = existingRecord && !hasVerificationCodeExpired(existingRecord);
+  const emailCode = shouldReuseCode ? existingRecord.email_code : generateResetCode();
+  const expiresAt = shouldReuseCode ? existingRecord.expiresAt : getEmailVerificationExpiry();
+
+  await EmailVerificationSchema.findOneAndUpdate(
+    { email },
+    {
+      email,
+      email_code: emailCode,
+      expiresAt,
+    },
+    { upsert: true, new: true, runValidators: true }
+  );
+
+  return sendEmailWithBrevo({
+    to: email,
+    subject: "Metatron Email Verification Code",
+    html: buildVerificationEmailHtml({ name, code: emailCode }),
+  });
+};
 
 const handleSignupPersonal = async (req, res) => {
   // Get token from params
@@ -139,9 +202,11 @@ const handleSignupPersonalMongo = async (req, res) => {
     // extracting password and email from the body request
     const {
       password,
-      email,
+      email: rawEmail,
       about
     } = user;
+    const email = rawEmail?.trim()?.toLowerCase();
+    user.email = email;
 
     // check if the provided email is valid like acceptable email
     if (!validator.isEmail(email)) {
@@ -196,12 +261,23 @@ const handleSignupPersonalMongo = async (req, res) => {
       const avatar = result.secure_url;
       const avatarID = result.public_id;
 
-      await PersonalModel.create({
+      const createdUser = await PersonalModel.create({
         ...user,
         avatar,
         avatarID,
         password: hashedpass,
       });
+
+      try {
+        await sendEmailVerificationCode({
+          email: createdUser.email,
+          name: createdUser.name,
+        });
+      } catch (emailError) {
+        await PersonalModel.findByIdAndDelete(createdUser._id);
+        await EmailVerificationSchema.findOneAndDelete({ email });
+        throw emailError;
+      }
 
       await res.status(200).send({
         message: successMsg,
@@ -215,7 +291,8 @@ const handleSignupPersonalMongo = async (req, res) => {
 
 // signin user to personal account no provider
 const handleSigninPersonal = async (req, res) => {
-   const { email, password } = req?.body || {};
+   const { email: rawEmail, password } = req?.body || {};
+   const email = rawEmail?.trim()?.toLowerCase();
 
   try {
     if (!validator.isEmail(email)) {
@@ -242,60 +319,10 @@ const handleSigninPersonal = async (req, res) => {
         req.session.userID = user._id;
         return res.status(200).send(user);
       } else {
-        let emailVerificationRecords = await EmailVerificationSchema.findOne({ email });
-        let tempCode = emailVerificationRecords ? emailVerificationRecords.email_code : generateResetCode();
-
-        const htmlContent = `
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <title>Email Verification Code</title>
-              <style>
-                body { font-family: sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
-                .container { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #fff;
-                  border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
-                h1 { color: #333; }
-                .code { font-size: 24px; font-weight: bold; color: #007bff; margin: 20px 0; text-align: center; }
-                .note { font-size: 14px; color: #777; }
-                .footer { margin-top: 20px; font-size: 12px; color: #999; text-align: center; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <h1>Email Verification Code</h1>
-                <p>Hi ${user.name},</p> <br/>
-                <p>Thank you for signing up! Please use the verification code below to confirm your email address:</p>
-                <div class="code">${tempCode}</div>
-                <p class="note">This code is valid for a limited time. If you did not request this, please ignore this email.</p>
-                <div class="footer">© ${new Date().getFullYear()} Metatron Dev Platform. All rights reserved.</div>
-              </div>
-            </body>
-          </html>
-        `;
-
-        let emailSubject = "Metatron Email Verification Code";
-
-        // --- Brevo SDK setup ---
-        let apiInstance = new Brevo.TransactionalEmailsApi();
-        let apiKey = apiInstance.authentications["apiKey"];
-        // Your Brevo API Key
-        apiKey.apiKey = process.env.BREVO_API_KEY; 
-
-        let sendSmtpEmail = new Brevo.SendSmtpEmail();
-        sendSmtpEmail.subject = emailSubject;
-        sendSmtpEmail.htmlContent = htmlContent;
-        sendSmtpEmail.sender = { name: process.env.PLATFORM_NAME || "Metatron Dev", email: process.env.BREVO_FROM };
-        sendSmtpEmail.to = [{ email }];
-
-        // Save verification code in DB (replace old record if exists)
-        await EmailVerificationSchema.findOneAndUpdate(
-          { email },
-          { email_code: tempCode },
-          { upsert: true, new: true }
-        );
-
-        // Send email
-        await apiInstance.sendTransacEmail(sendSmtpEmail);
+        await sendEmailVerificationCode({
+          email,
+          name: user.name,
+        });
 
         return res.status(200).send(user.email);
       }
@@ -313,14 +340,18 @@ const handleSigninPersonal = async (req, res) => {
 export const handleEmailVerification=async(req,res)=>{
   try {
     // extract the details from the body of the request
-    const {email,email_code}=req?.body || {}
+    const {email: rawEmail,email_code}=req?.body || {}
+    const email = rawEmail?.trim()?.toLowerCase();
+
+    if (!validator.isEmail(email)) {
+      throw new Error("email is invalid!");
+    }
 
     // check for user with that email in db
     const user=await personalModel.findOne({email})
 
     // check in the database if email exists
     const result=await EmailVerificationSchema.findOne({email})
-    const databaseCode=result.email_code
 
     if (!user) {
       throw new Error('user records not found!')
@@ -330,8 +361,13 @@ export const handleEmailVerification=async(req,res)=>{
       throw new Error('record not found!')
     }
 
+    if (hasVerificationCodeExpired(result)) {
+      await EmailVerificationSchema.findOneAndDelete({email})
+      throw new Error('verification code expired. request a new code!')
+    }
+
  // checking if the email verification codes are matching
-    if (databaseCode==email_code) {
+    if (result.email_code==email_code) {
       // updating the user attribute email verified
     user.email_verified=true
 
@@ -457,18 +493,6 @@ export const handleResetCodeRequest=async(req,res)=>{
         // extract user email
         let emailSubject="Metatron Password Reset Code"
 
-        // --- Brevo SDK setup ---
-        let apiInstance = new Brevo.TransactionalEmailsApi();
-        let apiKey = apiInstance.authentications["apiKey"];
-        // Your Brevo API Key
-        apiKey.apiKey = process.env.BREVO_API_KEY; 
-
-        let sendSmtpEmail = new Brevo.SendSmtpEmail();
-        sendSmtpEmail.subject = emailSubject;
-        sendSmtpEmail.htmlContent = htmlContent;
-        sendSmtpEmail.sender = { name: process.env.PLATFORM_NAME || "Metatron Dev", email: process.env.BREVO_FROM };
-        sendSmtpEmail.to = [{ email }];
-
         if (resetCodeRecords) {
           resetCodeRecords.email_code = tempCode;
           await resetCodeRecords.save();
@@ -480,7 +504,11 @@ export const handleResetCodeRequest=async(req,res)=>{
         }
 
       // Send email
-        await apiInstance.sendTransacEmail(sendSmtpEmail);
+        await sendEmailWithBrevo({
+          to: email,
+          subject: emailSubject,
+          html: htmlContent,
+        });
 
     // send response back to the frontend
     res.status(200).send({
