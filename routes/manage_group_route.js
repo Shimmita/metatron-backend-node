@@ -1,10 +1,13 @@
 import app from "express";
-import { handleFetchGroupDetails, handleGetAllGroupsCommunity, handleJoinGroupCommunity } from "../controllers/manage_group_controller.js";
+import { handleFetchGroupDetails, handleGetAllGroupsCommunity, handleJoinGroupCommunity, handleLeaveGroupCommunity } from "../controllers/manage_group_controller.js";
 
 const manageGroupCommunityRoute = app.Router();
 
 // joining community
 manageGroupCommunityRoute.post("/join", handleJoinGroupCommunity);
+
+// leaving community
+manageGroupCommunityRoute.post("/leave", handleLeaveGroupCommunity);
 
 // get all groups
 manageGroupCommunityRoute.get("/all/:userId", handleGetAllGroupsCommunity);

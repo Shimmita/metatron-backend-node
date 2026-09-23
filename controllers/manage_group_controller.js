@@ -50,6 +50,42 @@ export const handleJoinGroupCommunity=async(req,res)=>{
     }
 }
 
+export const handleLeaveGroupCommunity=async(req,res)=>{
+    try {
+        const {userId,groupId}=req?.body
+
+        const user=await personalModel.findById(userId)
+        const group=await GroupCommunityModel.findById(groupId)
+
+        if (!user) {
+            throw new Error('user not found in the records, please create a new account!')
+        }
+
+        if (!group) {
+            throw new Error('group not found in the records!')
+        }
+
+        const wasMember=group.members.includes(userId)
+
+        if (wasMember) {
+            group.members=group.members.filter(memberId=>memberId!==userId)
+            group.total=Math.max(0,group.total-1)
+            await group.save()
+        }
+
+        if (user.groups.includes(group.name)) {
+            user.groups=user.groups.filter(groupName=>groupName!==group.name)
+            await user.save()
+        }
+
+        res.status(200).send(`You have left ${group.name}.`)
+        
+    } catch (error) {
+        console.log(error.message)
+        res.status(400).send(error.message)
+    }
+}
+
 // handle fetching of all groups
  export const handleGetAllGroupsCommunity=async(req,res)=>{
     try {
@@ -81,10 +117,11 @@ export const handleFetchGroupDetails=async(req,res)=>{
     try {
         const {userId,groupId}=req?.params
         // check if user and group exist
-        const user=await personalModel.findById(userId)
+        const isGuest=userId==="guest"
+        const user=isGuest ? null : await personalModel.findById(userId)
         const group=await GroupCommunityModel.findById(groupId)
 
-        if (!user) {
+        if (!isGuest && !user) {
             throw new Error('user records not found, please create new account')
         }
 
