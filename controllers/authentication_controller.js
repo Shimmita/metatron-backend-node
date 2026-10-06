@@ -324,7 +324,10 @@ const handleSigninPersonal = async (req, res) => {
           name: user.name,
         });
 
-        return res.status(200).send(user.email);
+        return res.status(200).send({
+          requiresEmailVerification: true,
+          email: user.email,
+        });
       }
     } else {
       throw new Error("incorrect login credentials!");
@@ -368,17 +371,25 @@ export const handleEmailVerification=async(req,res)=>{
 
  // checking if the email verification codes are matching
     if (result.email_code==email_code) {
+      if (user.isDisabled) {
+        const supportEmail = process.env.DEV_EMAIL || process.env.BREVO_FROM || "technical support";
+        throw new Error(`Your Metatron account has been disabled. Contact technical help at ${supportEmail}.`);
+      }
+
       // updating the user attribute email verified
-    user.email_verified=true
+      user.email_verified=true
 
-    // save the user
-    await user.save()
+      // save the user
+      await user.save()
 
-    // delete the verification records
-    await EmailVerificationSchema.findOneAndDelete({email})
+      // delete the verification records
+      await EmailVerificationSchema.findOneAndDelete({email})
 
-    // sending the response to the frontend or client
-    res.status(200).send('verification successful!')
+      req.session.isOnline = true;
+      req.session.userID = user._id;
+
+      // sending the response to the frontend or client
+      return res.status(200).send(user)
     }
     else{
       // wrong verification code
